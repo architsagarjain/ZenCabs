@@ -39,7 +39,7 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 ## What's in the prototype
 
 **3D city and digital twin**
-- A night-time Jammu-like city: arterial roads, the Tawi river with bridges, the airport, the railway station and landmarks.
+- A daylight Jammu-like city: arterial roads, the Tawi river with bridges, the airport, the railway station and landmarks.
 - The ZenCabs base lot with **40 bays (A01–D10)**, 2 service bays and EV chargers.
 - Cars physically occupy bays. A bay shows as empty when its car leaves, and returning cars drive in through the gate and aisles into a free bay.
 
@@ -81,6 +81,16 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 - A dispatch activity feed shows events as they happen.
 
 Keyboard: `Esc` deselect · `o` Operations · `b` base camera · `c` city camera.
+
+## Brand
+
+The interface follows the ZenCabs Brand Guidelines:
+
+- **Colours:** primary #07C0EB and #27EBCD, and the #27EBCD → #07C0EB gradient for primary actions and highlights. White and #BDBDBD for surfaces and borders.
+- **Fonts:** Poppins for headings and numbers, Montserrat for body text. Both are bundled locally, so the console also works offline.
+- **Logo:** the official ZenCabs logo (`public/brand/`) appears in the top bar, the favicon, the loading screen and on the base office roof in 3D.
+
+All colours are defined in one file, `src/config/theme.ts`, which feeds both the UI and the 3D scene.
 
 ## Architecture
 

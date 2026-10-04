@@ -38,6 +38,7 @@ The rule that makes this possible: **the UI and 3D scene never touch mock data**
 | Path | Responsibility |
 | --- | --- |
 | `src/config/dataConfig.ts` | `DATA_MODE`, endpoints, operational thresholds (parking idle levels, low revenue, …). |
+| `src/config/theme.ts` | ZenCabs brand tokens (colours, gradient, fonts) and the daylight 3D palette. Every UI and scene colour comes from here. |
 | `src/contracts/` | Domain types, REST paths, WebSocket events and map payload, shared by every layer and the server. |
 | `src/core/` | Geo projection (lat/lng ↔ scene metres), clocks, emitter, formatting. |
 | `src/transport/` | `ApiClient` (HTTP / mock) and `RealtimeClient` (WebSocket / mock). |

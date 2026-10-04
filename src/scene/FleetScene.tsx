@@ -1,9 +1,9 @@
-import { Stars } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { ToneMappingMode } from 'postprocessing';
 import { Suspense, useRef } from 'react';
 import * as THREE from 'three';
+import { SCENE } from '../config/theme';
 import { useFleetStore } from '../store/fleetStore';
 import { ServicesContext, useServices } from '../store/servicesContext';
 import { CameraRig, ShadowFollower } from './CameraRig';
@@ -32,19 +32,19 @@ export function FleetScene() {
 }
 
 function World() {
-  const moon = useRef<THREE.DirectionalLight>(null);
+  const sun = useRef<THREE.DirectionalLight>(null);
   const showZones = useFleetStore((s) => s.showZones);
   return (
     <>
-      <color attach="background" args={['#060b14']} />
-      <fog attach="fog" args={['#070d18', 2200, 9000]} />
-      <ambientLight intensity={0.55} color="#8fa6c8" />
-      <hemisphereLight args={['#6b8cc4', '#0b1220', 0.7]} />
+      <color attach="background" args={[SCENE.sky]} />
+      <fog attach="fog" args={[SCENE.fog, SCENE.fogNear, SCENE.fogFar]} />
+      <ambientLight intensity={0.9} color="#ffffff" />
+      <hemisphereLight args={['#ffffff', '#c9d3dc', 1.1]} />
       <directionalLight
-        ref={moon}
+        ref={sun}
         castShadow
-        intensity={1.6}
-        color="#c7d7ff"
+        intensity={2.4}
+        color="#fff8ee"
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-180}
         shadow-camera-right={180}
@@ -54,8 +54,7 @@ function World() {
         shadow-camera-far={1200}
         shadow-bias={-0.0004}
       />
-      <ShadowFollower light={moon} />
-      <Stars radius={7000} depth={600} count={2500} factor={60} fade speed={0.4} />
+      <ShadowFollower light={sun} />
       <Suspense fallback={null}>
         <City />
         <ParkingLotTwin />
@@ -66,9 +65,9 @@ function World() {
       </Suspense>
       <CameraRig />
       <EffectComposer multisampling={4}>
-        <Bloom intensity={0.85} luminanceThreshold={0.95} luminanceSmoothing={0.25} mipmapBlur radius={0.7} />
-        <Vignette offset={0.25} darkness={0.55} />
-        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        <Bloom intensity={0.35} luminanceThreshold={1.15} luminanceSmoothing={0.2} mipmapBlur radius={0.5} />
+        <Vignette offset={0.35} darkness={0.18} />
+        <ToneMapping mode={ToneMappingMode.NEUTRAL} />
       </EffectComposer>
     </>
   );

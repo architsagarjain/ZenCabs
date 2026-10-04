@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { toScene } from '../core/geo';
 import { useFleetStore, type CameraPreset } from '../store/fleetStore';
 import { useServices } from '../store/servicesContext';
-import { renderedPoses } from './registry';
+import { FRAME_PRIORITY, renderedPoses } from './registry';
 
 /** Smooth camera: presets, fly-to-vehicle, and follow mode. */
 export function CameraRig() {
@@ -52,7 +52,7 @@ export function CameraRig() {
       const az = Math.atan2(camera.position.x - target.x, camera.position.z - target.z);
       const dist = 42;
       c.setLookAt(p.x + Math.sin(az) * dist, 30, p.z + Math.cos(az) * dist, p.x, 0, p.z, true);
-      flyUntil.current = performance.now() + 900;
+      flyUntil.current = performance.now() + 700;
       useFleetStore.setState({ following: true });
     } else if (request.kind === 'point' && request.point) {
       const { x, z, distance = 600 } = request.point;
@@ -61,15 +61,22 @@ export function CameraRig() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request]);
 
-  useFrame(() => {
+  // Tight follow: our own exponential chase (≈0.12 s time constant) on top of the already
+  // smoothed vehicle pose, so fast cars at high sim speeds stay centred instead of lagging
+  // behind camera-controls' longer transition smoothing.
+  const tgt = useRef(new THREE.Vector3());
+  useFrame((_, dt) => {
     const c = ref.current;
     if (!c) return;
     const { following, selectedVehicleId } = useFleetStore.getState();
     if (following && selectedVehicleId && performance.now() > flyUntil.current) {
       const p = renderedPoses.get(selectedVehicleId);
-      if (p) c.moveTo(p.x, 0, p.z, true);
+      if (!p) return;
+      c.getTarget(tgt.current);
+      const k = 1 - Math.exp(-Math.min(dt, 1) * 8);
+      c.moveTo(tgt.current.x + (p.x - tgt.current.x) * k, 0, tgt.current.z + (p.z - tgt.current.z) * k, false);
     }
-  });
+  }, FRAME_PRIORITY.cameraFollow);
 
   return (
     <CameraControls

@@ -2,10 +2,15 @@ import type { ReactNode } from 'react';
 import { IDLE_COLORS, IDLE_LABEL, STATUS_COLORS, STATUS_LABEL, parkingIdleLevel, formatDuration } from '../core/format';
 import type { VehicleStatus } from '../contracts/types';
 
+/** Darkens a status colour so it stays legible as text on the white UI. */
+export function onLight(c: string) {
+  return `color-mix(in srgb, ${c} 72%, #121826)`;
+}
+
 export function StatusPill({ status, small }: { status: VehicleStatus; small?: boolean }) {
   const c = STATUS_COLORS[status];
   return (
-    <span className={`pill ${small ? 'sm' : ''}`} style={{ color: c, borderColor: c + '66', background: c + '1f' }}>
+    <span className={`pill ${small ? 'sm' : ''}`} style={{ color: onLight(c), borderColor: c + '66', background: c + '18' }}>
       <i style={{ background: c }} />
       {small ? STATUS_LABEL[status] : status.replace(/_/g, ' ')}
     </span>
@@ -17,7 +22,7 @@ export function IdleBadge({ ms }: { ms: number | null }) {
   const lvl = parkingIdleLevel(ms);
   const c = IDLE_COLORS[lvl];
   return (
-    <span className={`idle-badge lvl-${lvl.toLowerCase()}`} style={{ color: c, borderColor: c + '66', background: c + '1a' }}>
+    <span className={`idle-badge lvl-${lvl.toLowerCase()}`} style={{ color: onLight(c), borderColor: c + '66', background: c + '18' }}>
       {formatDuration(ms)} · {IDLE_LABEL[lvl]}
     </span>
   );

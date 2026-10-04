@@ -3,7 +3,7 @@
  * parkingService.layout (ParkingLotLayout). Swap the layout for the surveyed
  * real lot and this component renders it without code changes.
  */
-import { Html } from '@react-three/drei';
+import { Html, useTexture } from '@react-three/drei';
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
@@ -12,6 +12,7 @@ import { toScene } from '../core/geo';
 import type { ParkingBay } from '../contracts/types';
 import { useFleetStore } from '../store/fleetStore';
 import { useServices } from '../store/servicesContext';
+import { BRAND, SCENE } from '../config/theme';
 import { LAYER_Y } from './registry';
 
 const DEG = Math.PI / 180;
@@ -27,8 +28,8 @@ function textTexture(text: string, opts: { w?: number; h?: number; color?: strin
     ctx.fillStyle = opts.bg;
     ctx.fillRect(0, 0, w, h);
   }
-  ctx.fillStyle = opts.color ?? '#e2e8f0';
-  ctx.font = opts.font ?? `700 ${Math.floor(h * 0.6)}px Inter, Arial`;
+  ctx.fillStyle = opts.color ?? BRAND.ink;
+  ctx.font = opts.font ?? `600 ${Math.floor(h * 0.6)}px Poppins, Montserrat, Arial`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(text, w / 2, h / 2 + 2);
@@ -73,22 +74,25 @@ export function ParkingLotTwin() {
     return parts.length ? mergeAll(parts) : geo;
   }, [layout]);
 
-  const signTex = useMemo(() => textTexture('ZENCABS', { w: 512, h: 128, color: '#5eead4', bg: '#0b1320', font: '800 84px Inter, Arial' }), []);
-  const baseTex = useMemo(() => textTexture('BASE · JAMMU', { w: 512, h: 96, color: '#e2e8f0', font: '700 52px Inter, Arial' }), []);
+  // Official ZenCabs logo (extracted from the brand guidelines) on the ops-office roof.
+  const logoTex = useTexture('/brand/zencabs-logo.png');
+  logoTex.colorSpace = THREE.SRGBColorSpace;
+  logoTex.anisotropy = 8;
+  const baseTex = useMemo(() => textTexture('BASE · JAMMU', { w: 512, h: 96, color: '#FFFFFF', font: '600 52px Poppins, Montserrat, Arial' }), []);
 
   return (
     <group position={[origin.x, 0, origin.z]} rotation-y={-layout.bearing * DEG}>
       {/* slab + apron to the street */}
       <mesh position={L(layout.width / 2, layout.depth / 2, LAYER_Y.lot - 0.1)} receiveShadow>
         <boxGeometry args={[layout.width + 4, 0.2, layout.depth + 4]} />
-        <meshStandardMaterial color="#202a38" roughness={0.92} />
+        <meshStandardMaterial color={SCENE.lotAsphalt} roughness={0.95} />
       </mesh>
       <mesh position={L(layout.gate.x, -11, LAYER_Y.lot - 0.1)} receiveShadow>
         <boxGeometry args={[9, 0.2, 22]} />
-        <meshStandardMaterial color="#202a38" roughness={0.92} />
+        <meshStandardMaterial color={SCENE.lotAsphalt} roughness={0.95} />
       </mesh>
       <mesh geometry={lines}>
-        <meshBasicMaterial color={new THREE.Color('#dbe4f0').multiplyScalar(0.85)} toneMapped={false} />
+        <meshBasicMaterial color={SCENE.lotLine} />
       </mesh>
 
       {layout.bays.map((b) => (
@@ -109,12 +113,12 @@ export function ParkingLotTwin() {
             ].map(([x, z], i) => (
               <mesh key={i} position={[x, bd.h / 2, z]} castShadow>
                 <boxGeometry args={[0.3, bd.h, 0.3]} />
-                <meshStandardMaterial color="#64748b" />
+                <meshStandardMaterial color={SCENE.pole} />
               </mesh>
             ))}
             <mesh position={[0, bd.h, 0]} castShadow>
               <boxGeometry args={[bd.w + 1, 0.25, bd.d + 1]} />
-              <meshStandardMaterial color="#f59e0b" transparent opacity={0.55} />
+              <meshStandardMaterial color={SCENE.bayService} transparent opacity={0.6} />
             </mesh>
             <Html position={[0, bd.h + 1.5, 0]} center distanceFactor={60} style={{ pointerEvents: 'none' }}>
               <div className="lot-tag service">SERVICE BAY</div>
@@ -124,22 +128,22 @@ export function ParkingLotTwin() {
           <group key={bd.id} position={L(bd.x, bd.y)}>
             <mesh position-y={bd.h / 2} castShadow receiveShadow>
               <boxGeometry args={[bd.w, bd.h, bd.d]} />
-              <meshStandardMaterial color="#1e293b" roughness={0.6} metalness={0.2} />
+              <meshStandardMaterial color={SCENE.lotOffice} roughness={0.6} metalness={0.05} />
             </mesh>
             <mesh position={[0, bd.h * 0.55, -bd.d / 2 - 0.01]} rotation-y={Math.PI}>
               <planeGeometry args={[bd.w * 0.9, bd.h * 0.35]} />
-              <meshBasicMaterial color={new THREE.Color('#7dd3fc').multiplyScalar(1.4)} toneMapped={false} transparent opacity={0.7} />
+              <meshStandardMaterial color={SCENE.lotGlass} roughness={0.15} metalness={0.3} />
             </mesh>
-            <mesh position={[0, bd.h + 0.02, 0]} rotation-x={-Math.PI / 2}>
-              <planeGeometry args={[bd.w * 0.95, bd.d * 0.5]} />
-              <meshBasicMaterial map={signTex} toneMapped={false} />
+            <mesh position={[0, bd.h + 0.03, 0]} rotation-x={-Math.PI / 2}>
+              <planeGeometry args={[bd.w * 0.9, (bd.w * 0.9) / 3.44]} />
+              <meshBasicMaterial map={logoTex} transparent />
             </mesh>
           </group>
         ),
       )}
       <mesh position={L(30, 18.6, LAYER_Y.lotLine + 0.01)} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[16, 3]} />
-        <meshBasicMaterial map={baseTex} transparent toneMapped={false} opacity={0.75} />
+        <meshBasicMaterial map={baseTex} transparent opacity={0.9} />
       </mesh>
 
       {/* lamp posts */}
@@ -154,15 +158,14 @@ export function ParkingLotTwin() {
         <group key={i} position={L(x, y)}>
           <mesh position-y={4.5}>
             <boxGeometry args={[0.25, 9, 0.25]} />
-            <meshStandardMaterial color="#475569" />
+            <meshStandardMaterial color={SCENE.pole} />
           </mesh>
           <mesh position-y={9.1}>
             <boxGeometry args={[1.6, 0.25, 0.6]} />
-            <meshBasicMaterial color={new THREE.Color('#e0f2fe').multiplyScalar(3)} toneMapped={false} />
+            <meshStandardMaterial color={SCENE.lampHead} />
           </mesh>
         </group>
       ))}
-      <pointLight position={L(layout.width / 2, layout.depth / 2, 18)} intensity={900} distance={90} decay={2} color="#cfe8ff" />
       <Html position={L(layout.width / 2, layout.depth + 4, 14)} center style={{ pointerEvents: 'none' }} zIndexRange={[20, 0]}>
         <BaseBadge />
       </Html>
@@ -205,8 +208,8 @@ function Bay({ bay, showTimer }: { bay: ParkingBay; showTimer: boolean }) {
   const occupied = !!state?.vehicleId;
   const duration = occupied && state?.entryTime ? now - state.entryTime : null;
   const level = parkingIdleLevel(duration);
-  const color = bay.kind === 'SERVICE' ? '#f59e0b' : occupied ? IDLE_COLORS[level] : bay.kind === 'EV_CHARGING' ? '#22c55e' : '#334155';
-  const labelTex = useMemo(() => textTexture(bay.bayId, { color: '#94a3b8' }), [bay.bayId]);
+  const color = bay.kind === 'SERVICE' ? SCENE.bayService : occupied ? IDLE_COLORS[level] : bay.kind === 'EV_CHARGING' ? SCENE.bayEV : SCENE.bayEmpty;
+  const labelTex = useMemo(() => textTexture(bay.bayId, { color: '#FFFFFF' }), [bay.bayId]);
   const nose = bay.rotation === 0 ? 1 : -1;
   const parkedVehicleCounts = vehicle && vehicle.status !== 'MAINTENANCE' && vehicle.status !== 'OFFLINE';
 
@@ -220,21 +223,21 @@ function Bay({ bay, showTimer }: { bay: ParkingBay; showTimer: boolean }) {
     <group>
       <mesh position={L(bay.x, bay.y, LAYER_Y.lot + 0.03)} rotation-x={-Math.PI / 2}>
         <planeGeometry args={[bay.width - 0.25, bay.length - 0.2]} />
-        <meshBasicMaterial ref={matRef} color={state?.reservedFor && !occupied ? '#2dd4bf' : color} transparent opacity={0.1} depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={matRef} color={state?.reservedFor && !occupied ? SCENE.bayReserved : color} transparent opacity={0.1} depthWrite={false} />
       </mesh>
       <mesh position={L(bay.x, bay.y - (nose * bay.length) / 2 - 0.9, LAYER_Y.lotLine + 0.02)} rotation-x={-Math.PI / 2} rotation-z={0}>
         <planeGeometry args={[1.8, 0.9]} />
-        <meshBasicMaterial map={labelTex} transparent toneMapped={false} />
+        <meshBasicMaterial map={labelTex} transparent />
       </mesh>
       {bay.kind === 'EV_CHARGING' && (
         <group position={L(bay.x + bay.width / 2 - 0.3, bay.y + (nose * bay.length) / 2 + 0.4)}>
           <mesh position-y={0.8}>
             <boxGeometry args={[0.4, 1.6, 0.3]} />
-            <meshStandardMaterial color="#e2e8f0" />
+            <meshStandardMaterial color="#FFFFFF" />
           </mesh>
           <mesh position-y={1.35}>
             <boxGeometry args={[0.42, 0.18, 0.32]} />
-            <meshBasicMaterial color={occupied ? new THREE.Color('#22c55e').multiplyScalar(3) : new THREE.Color('#38bdf8').multiplyScalar(2)} toneMapped={false} />
+            <meshBasicMaterial color={occupied ? BRAND.aqua : BRAND.sky} />
           </mesh>
         </group>
       )}
@@ -272,7 +275,7 @@ function Fence({ width, depth, gateX }: { width: number; depth: number; gateX: n
         return (
           <mesh key={i} position={L((x0 + x1) / 2, (y0 + y1) / 2, 0.9)} rotation-y={ang}>
             <boxGeometry args={[0.15, 1.8, len]} />
-            <meshStandardMaterial color="#64748b" transparent opacity={0.55} metalness={0.6} roughness={0.3} />
+            <meshStandardMaterial color={SCENE.lotFence} transparent opacity={0.6} metalness={0.4} roughness={0.4} />
           </mesh>
         );
       })}
@@ -285,19 +288,19 @@ function Gate({ x }: { x: number }) {
     <group position={L(x, -2)}>
       <mesh position={[-5.5, 1.3, 0]} castShadow>
         <boxGeometry args={[2.4, 2.6, 2.4]} />
-        <meshStandardMaterial color="#334155" />
+        <meshStandardMaterial color="#FFFFFF" />
       </mesh>
       <mesh position={[-4.2, 1, 0]}>
         <boxGeometry args={[0.3, 1.2, 0.3]} />
-        <meshStandardMaterial color="#e2e8f0" />
+        <meshStandardMaterial color={SCENE.pole} />
       </mesh>
       <mesh position={[-0.2, 1.5, 0]}>
         <boxGeometry args={[8, 0.14, 0.14]} />
-        <meshStandardMaterial color="#ef4444" emissive="#7f1d1d" />
+        <meshStandardMaterial color="#DC2626" />
       </mesh>
       <mesh position={[-5.5, 2.75, 0]}>
         <boxGeometry args={[2.6, 0.12, 2.6]} />
-        <meshBasicMaterial color={new THREE.Color('#5eead4').multiplyScalar(2.5)} toneMapped={false} />
+        <meshBasicMaterial color={BRAND.sky} />
       </mesh>
     </group>
   );

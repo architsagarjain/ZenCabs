@@ -40,11 +40,8 @@ export function TopBar() {
   return (
     <header className="topbar">
       <div className="brand">
-        <div className="logo">Z</div>
-        <div>
-          <b>ZenCabs</b>
-          <span>Fleet Command Center · Jammu</span>
-        </div>
+        <img src="/brand/zencabs-logo.png" alt="ZenCabs" />
+        <span>Fleet Command Center · Jammu</span>
       </div>
 
       <div className="kpis">

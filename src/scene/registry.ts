@@ -16,3 +16,10 @@ export const LAYER_Y = {
   lotLine: 0.3,
   car: 0.24,
 };
+
+/**
+ * useFrame ordering (lower runs first; all negative so R3F keeps auto-rendering):
+ * vehicle poses → camera follow → drei CameraControls.update (-1) → render.
+ * Without this the follow camera aims at last frame's position.
+ */
+export const FRAME_PRIORITY = { vehicles: -3, cameraFollow: -2 } as const;

@@ -39,10 +39,10 @@ export function parkingIdleLevel(durationMs: number | null): ParkingIdleLevel {
 }
 
 export const IDLE_COLORS: Record<ParkingIdleLevel, string> = {
-  NORMAL: '#22c55e',
-  ATTENTION: '#facc15',
-  WARNING: '#fb923c',
-  CRITICAL: '#ef4444',
+  NORMAL: '#16A34A',
+  ATTENTION: '#EAB308',
+  WARNING: '#F97316',
+  CRITICAL: '#DC2626',
 };
 
 export const IDLE_LABEL: Record<ParkingIdleLevel, string> = {
@@ -52,15 +52,16 @@ export const IDLE_LABEL: Record<ParkingIdleLevel, string> = {
   CRITICAL: 'Critical idle',
 };
 
+/** Status palette tuned for a light UI; brand cyan marks "heading to a customer". */
 export const STATUS_COLORS: Record<VehicleStatus, string> = {
-  AVAILABLE: '#22c55e',
-  ASSIGNED: '#a78bfa',
-  EN_ROUTE_PICKUP: '#38bdf8',
-  WAITING: '#f472b6',
-  ON_TRIP: '#3b82f6',
-  RETURNING_TO_BASE: '#2dd4bf',
-  MAINTENANCE: '#f59e0b',
-  OFFLINE: '#64748b',
+  AVAILABLE: '#16A34A',
+  ASSIGNED: '#8B5CF6',
+  EN_ROUTE_PICKUP: '#07C0EB',
+  WAITING: '#EC4899',
+  ON_TRIP: '#1E63C4',
+  RETURNING_TO_BASE: '#14B8A6',
+  MAINTENANCE: '#F59E0B',
+  OFFLINE: '#64748B',
 };
 
 export const STATUS_LABEL: Record<VehicleStatus, string> = {

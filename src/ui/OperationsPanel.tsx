@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { formatAgo, formatDuration, formatINR, IDLE_COLORS, parkingIdleLevel, shortId, STATUS_COLORS } from '../core/format';
 import { toScene } from '../core/geo';
 import { OPS_THRESHOLDS } from '../config/dataConfig';
+import { BRAND } from '../config/theme';
 import { useFleetStore } from '../store/fleetStore';
 import { useServices } from '../store/servicesContext';
 import { Card, StatusPill } from './common';
@@ -45,7 +46,7 @@ export function OperationsPanel() {
         <span className="muted">Live answers · updated continuously</span>
       </div>
       <div className="ops-scroll">
-        <Card icon="🎯" title="Which vehicle should receive the next booking?" subtitle={rec?.forZone ?? 'Waiting for demand signal…'} accent="#5eead4">
+        <Card icon="🎯" title="Which vehicle should receive the next booking?" subtitle={rec?.forZone ?? 'Waiting for demand signal…'} accent={BRAND.sky}>
           {rec?.result.recommended ? (
             <>
               <div className="rec">
@@ -87,7 +88,7 @@ export function OperationsPanel() {
           )}
         </Card>
 
-        <Card icon="⏱" title="Which cars have been parked too long?" subtitle={`${parkedLong.length} parked > 1 hr at base`} accent="#fb923c">
+        <Card icon="⏱" title="Which cars have been parked too long?" subtitle={`${parkedLong.length} parked > 1 hr at base`} accent="#F97316">
           {parkedLong.length === 0 && <p className="muted">None — great.</p>}
           {parkedLong.map(({ v, ms }) => {
             const lvl = parkingIdleLevel(ms);
@@ -104,7 +105,7 @@ export function OperationsPanel() {
           })}
         </Card>
 
-        <Card icon="🔥" title="Which areas have demand but not enough vehicles?" subtitle="Pending + 30-min forecast vs available supply" accent="#ef4444">
+        <Card icon="🔥" title="Which areas have demand but not enough vehicles?" subtitle="Pending + 30-min forecast vs available supply" accent="#DC2626">
           {gaps.length === 0 && <p className="muted">Supply covers demand everywhere.</p>}
           {gaps.slice(0, 6).map((z) => (
             <div
@@ -125,7 +126,7 @@ export function OperationsPanel() {
           ))}
         </Card>
 
-        <Card icon="💤" title="Which vehicles are sitting idle?" subtitle={`${idle.length} available and stationary`} accent="#22c55e">
+        <Card icon="💤" title="Which vehicles are sitting idle?" subtitle={`${idle.length} available and stationary`} accent="#16A34A">
           {idle.slice(0, 10).map(({ v, idleMs, atBase }) => (
             <div className="ops-row" key={v.vehicleId}>
               <VLink id={v.vehicleId} />
@@ -135,7 +136,7 @@ export function OperationsPanel() {
           ))}
         </Card>
 
-        <Card icon="🧑‍✈️" title="Which drivers are currently working?" subtitle={`${working.length} on shift · ${offShift.length} on break / off`} accent="#38bdf8">
+        <Card icon="🧑‍✈️" title="Which drivers are currently working?" subtitle={`${working.length} on shift · ${offShift.length} on break / off`} accent={BRAND.tagline}>
           <div className="driver-grid">
             {working.map(({ d, v }) => (
               <button key={d.driverId} className="driver-chip" onClick={() => v && select(v.vehicleId)} title={d.name}>
@@ -148,7 +149,7 @@ export function OperationsPanel() {
           {offShift.length > 0 && <div className="muted small">Not working: {offShift.map((d) => `${d.name} (${d.shiftState.replace('_', ' ').toLowerCase()})`).join(', ')}</div>}
         </Card>
 
-        <Card icon="💰" title="Which vehicles are making the most revenue?" subtitle="Top earners today" accent="#a78bfa">
+        <Card icon="💰" title="Which vehicles are making the most revenue?" subtitle="Top earners today" accent={BRAND.aqua}>
           {top.map((v) => (
             <div className="bar-row" key={v.vehicleId}>
               <VLink id={v.vehicleId} />
@@ -184,20 +185,20 @@ export function OperationsPanel() {
           ))}
         </Card>
 
-        <Card icon="📍" title="Where are my cars concentrated?" subtitle={`${conc.elsewhere} vehicles between zones`} accent="#2dd4bf">
+        <Card icon="📍" title="Where are my cars concentrated?" subtitle={`${conc.elsewhere} vehicles between zones`} accent={BRAND.aquaDeep}>
           {conc.zones.map((z) => (
             <div className="bar-row" key={z.zoneId}>
               <span className="zname">{z.name}</span>
               <div className="bar stacked">
-                <div style={{ width: `${(z.available / maxConc) * 100}%`, background: '#22c55e' }} />
-                <div style={{ width: `${(z.busy / maxConc) * 100}%`, background: '#3b82f6' }} />
-                <div style={{ width: `${((z.total - z.available - z.busy) / maxConc) * 100}%`, background: '#64748b' }} />
+                <div style={{ width: `${(z.available / maxConc) * 100}%`, background: STATUS_COLORS.AVAILABLE }} />
+                <div style={{ width: `${(z.busy / maxConc) * 100}%`, background: STATUS_COLORS.ON_TRIP }} />
+                <div style={{ width: `${((z.total - z.available - z.busy) / maxConc) * 100}%`, background: '#BDBDBD' }} />
               </div>
               <span className="mono">{z.total}</span>
             </div>
           ))}
           <div className="legend small">
-            <i style={{ background: '#22c55e' }} /> available <i style={{ background: '#3b82f6' }} /> busy <i style={{ background: '#64748b' }} /> other
+            <i style={{ background: STATUS_COLORS.AVAILABLE }} /> available <i style={{ background: STATUS_COLORS.ON_TRIP }} /> busy <i style={{ background: '#BDBDBD' }} /> other
           </div>
         </Card>
         <div className="muted small" style={{ padding: '4px 4px 12px' }}>

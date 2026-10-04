@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { toScene } from '../core/geo';
 import type { GPSFix, Trip } from '../contracts/types';
+import { SCENE } from '../config/theme';
 import { useFleetStore } from '../store/fleetStore';
 import { useServices } from '../store/servicesContext';
 
@@ -44,7 +45,7 @@ export function RouteOverlay() {
   const trailPts = useMemo(() => trail.map((f) => toScene(f.latitude, f.longitude)).map((p) => new THREE.Vector3(p.x, 0.9, p.z)), [trail]);
   if (!id || !v) return null;
   const toPickup = v.status === 'ASSIGNED' || v.status === 'EN_ROUTE_PICKUP';
-  const routeColor = toPickup ? '#38bdf8' : '#818cf8';
+  const routeColor = toPickup ? SCENE.routeToPickup : SCENE.routeTrip;
   const pickup = trip && toScene(trip.pickup.lat, trip.pickup.lng);
   const dest = trip && toScene(trip.destination.lat, trip.destination.lng);
 
@@ -53,9 +54,9 @@ export function RouteOverlay() {
       {showRoute && routePts.length > 1 && (status === 'EN_ROUTE_PICKUP' || status === 'ON_TRIP') && (
         <Line points={routePts} color={routeColor} lineWidth={4} dashed={toPickup} dashSize={8} gapSize={5} transparent opacity={0.9} />
       )}
-      {(showTrails || showRoute) && trailPts.length > 1 && <Line points={trailPts} color="#5eead4" lineWidth={2} transparent opacity={0.5} />}
-      {showRoute && trip && pickup && (toPickup || status === 'WAITING') && <Pin x={pickup.x} z={pickup.z} color="#f472b6" label={`Pickup · ${trip.pickup.name}`} />}
-      {showRoute && trip && dest && v.currentTripId && <Pin x={dest.x} z={dest.z} color="#818cf8" label={`Drop · ${trip.destination.name}`} />}
+      {(showTrails || showRoute) && trailPts.length > 1 && <Line points={trailPts} color={SCENE.trail} lineWidth={2.5} transparent opacity={0.7} />}
+      {showRoute && trip && pickup && (toPickup || status === 'WAITING') && <Pin x={pickup.x} z={pickup.z} color={SCENE.pickupPin} label={`Pickup · ${trip.pickup.name}`} />}
+      {showRoute && trip && dest && v.currentTripId && <Pin x={dest.x} z={dest.z} color={SCENE.dropPin} label={`Drop · ${trip.destination.name}`} />}
     </group>
   );
 }
@@ -68,22 +69,22 @@ function Pin({ x, z, color, label }: { x: number; z: number; color: string; labe
     ref.current.scale.setScalar(THREE.MathUtils.clamp(d / 220, 1, 10));
     ref.current.position.y = 0.5 + Math.sin(clock.elapsedTime * 3) * 0.3;
   });
-  const c = useMemo(() => new THREE.Color(color).multiplyScalar(2.2), [color]);
+  const c = useMemo(() => new THREE.Color(color), [color]);
   return (
     <group position={[x, 0, z]}>
       <group ref={ref}>
         <mesh position-y={4.5}>
           <sphereGeometry args={[1.1, 16, 12]} />
-          <meshBasicMaterial color={c} toneMapped={false} />
+          <meshBasicMaterial color={c} />
         </mesh>
         <mesh position-y={2}>
           <coneGeometry args={[0.8, 3.5, 12]} />
-          <meshBasicMaterial color={c} toneMapped={false} />
+          <meshBasicMaterial color={c} />
         </mesh>
       </group>
       <mesh rotation-x={-Math.PI / 2} position-y={0.4}>
         <ringGeometry args={[6, 7.5, 40]} />
-        <meshBasicMaterial color={c} transparent opacity={0.6} toneMapped={false} depthWrite={false} />
+        <meshBasicMaterial color={c} transparent opacity={0.6} depthWrite={false} />
       </mesh>
       <Html position={[0, 14, 0]} center zIndexRange={[35, 0]} style={{ pointerEvents: 'none' }}>
         <div className="pin-label" style={{ borderColor: color }}>
@@ -107,7 +108,7 @@ export function PendingRequests() {
   );
 }
 
-const reqColor = new THREE.Color('#f472b6').multiplyScalar(2.5);
+const reqColor = new THREE.Color(SCENE.request);
 function RequestMarker({ lat, lng }: { lat: number; lng: number }) {
   const p = useMemo(() => toScene(lat, lng), [lat, lng]);
   const ring = useRef<THREE.Mesh>(null);
@@ -123,11 +124,11 @@ function RequestMarker({ lat, lng }: { lat: number; lng: number }) {
     <group position={[p.x, 0.6, p.z]}>
       <mesh ref={ring} rotation-x={-Math.PI / 2}>
         <ringGeometry args={[3, 4, 32]} />
-        <meshBasicMaterial ref={mat} color={reqColor} transparent depthWrite={false} toneMapped={false} />
+        <meshBasicMaterial ref={mat} color={reqColor} transparent depthWrite={false} />
       </mesh>
       <mesh position-y={1.5}>
         <sphereGeometry args={[1.4, 12, 10]} />
-        <meshBasicMaterial color={reqColor} toneMapped={false} />
+        <meshBasicMaterial color={reqColor} />
       </mesh>
     </group>
   );
@@ -146,21 +147,21 @@ export function ZonesOverlay() {
         const c = toScene(zone.center.lat, zone.center.lng);
         const demand = z.pendingRequests + z.forecastNext30 / 3;
         const ratio = demand > 0 ? z.supply / demand : 2;
-        const color = ratio >= 1 ? '#22c55e' : ratio >= 0.5 ? '#f59e0b' : '#ef4444';
+        const color = ratio >= 1 ? SCENE.zoneOk : ratio >= 0.5 ? SCENE.zoneTight : SCENE.zoneShort;
         const h = 30 + z.forecastNext30 * 14;
         return (
           <group key={z.zoneId} position={[c.x, 0, c.z]}>
             <mesh rotation-x={-Math.PI / 2} position-y={0.5}>
               <circleGeometry args={[zone.radiusM, 64]} />
-              <meshBasicMaterial color={color} transparent opacity={0.1} depthWrite={false} />
+              <meshBasicMaterial color={color} transparent opacity={0.14} depthWrite={false} />
             </mesh>
             <mesh rotation-x={-Math.PI / 2} position-y={0.55}>
               <ringGeometry args={[zone.radiusM - 6, zone.radiusM, 96]} />
-              <meshBasicMaterial color={new THREE.Color(color).multiplyScalar(1.8)} transparent opacity={0.7} depthWrite={false} toneMapped={false} />
+              <meshBasicMaterial color={color} transparent opacity={0.7} depthWrite={false} />
             </mesh>
             <mesh position-y={h / 2}>
               <cylinderGeometry args={[14, 14, h, 24]} />
-              <meshBasicMaterial color={new THREE.Color(color).multiplyScalar(1.2)} transparent opacity={0.35} depthWrite={false} toneMapped={false} />
+              <meshBasicMaterial color={color} transparent opacity={0.35} depthWrite={false} />
             </mesh>
             <Html position={[0, h + 30, 0]} center zIndexRange={[25, 0]} style={{ pointerEvents: 'none' }}>
               <div className="zone-label" style={{ borderColor: color }}>

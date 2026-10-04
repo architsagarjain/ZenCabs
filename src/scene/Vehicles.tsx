@@ -13,7 +13,8 @@ import { matchesFilter, useFleetStore } from '../store/fleetStore';
 import { useServices } from '../store/servicesContext';
 import { carGeometry } from './carGeometry';
 import { sharedMaterials } from './materials';
-import { LAYER_Y, renderedHeadings, renderedPoses } from './registry';
+import { BRAND, SCENE } from '../config/theme';
+import { FRAME_PRIORITY, LAYER_Y, renderedHeadings, renderedPoses } from './registry';
 
 export function Vehicles() {
   const ids = useFleetStore((s) => s.vehicles.map((v) => v.vehicleId).join(','));
@@ -70,18 +71,18 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
 
   const geo = useMemo(() => carGeometry(v.vehicleType, v.fuelKind === 'ELECTRIC'), [v.vehicleType, v.fuelKind]);
   const statusColor = STATUS_COLORS[v.status];
-  const signMat = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false }), []);
-  const beaconMat = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false, depthTest: false, transparent: true }), []);
-  const stemMat = useMemo(() => new THREE.MeshBasicMaterial({ toneMapped: false, transparent: true, opacity: 0.35, depthWrite: false }), []);
-  const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }), []);
+  const signMat = useMemo(() => new THREE.MeshBasicMaterial(), []);
+  const beaconMat = useMemo(() => new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }), []);
+  const stemMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.45, depthWrite: false }), []);
+  const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false }), []);
   const parkedMs = v.parkingEntryTime ? now - v.parkingEntryTime : null;
   const idleLevel = v.parkingBay && v.status === 'AVAILABLE' ? parkingIdleLevel(parkedMs) : null;
 
-  signMat.color.set(dimmed ? '#334155' : statusColor).multiplyScalar(dimmed ? 1 : 2.4);
-  ringMat.color.set(idleLevel && idleLevel !== 'NORMAL' ? IDLE_COLORS[idleLevel] : statusColor).multiplyScalar(1.6);
+  signMat.color.set(dimmed ? '#CBD5E1' : statusColor).multiplyScalar(dimmed ? 1 : 1.25);
+  ringMat.color.set(idleLevel && idleLevel !== 'NORMAL' ? IDLE_COLORS[idleLevel] : statusColor);
   // In a bay the bay floor already shows the idle state; keep the ring off so bays stay readable.
   ringMat.opacity = dimmed || v.parkingBay ? 0.0 : 0.85;
-  beaconMat.color.set(statusColor).multiplyScalar(dimmed ? 0.35 : 2);
+  beaconMat.color.set(dimmed ? '#CBD5E1' : statusColor);
   beaconMat.opacity = dimmed ? 0.35 : 1;
   stemMat.color.set(statusColor);
 
@@ -149,7 +150,7 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
     if (!pose) renderedPoses.set(id, (pose = new THREE.Vector3()));
     pose.set(s.x, 0, s.z);
     renderedHeadings.set(id, s.yaw);
-  });
+  }, FRAME_PRIORITY.vehicles);
 
   if (!v) return null;
   const labelVisible = selected || hovered || (showLabels && !dimmed);
@@ -182,16 +183,16 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
         {selected && (
           <>
             <mesh ref={selRing} geometry={selRingGeo} position-y={0.1}>
-              <meshBasicMaterial color={new THREE.Color('#5eead4').multiplyScalar(2.5)} transparent opacity={0.95} depthWrite={false} toneMapped={false} />
+              <meshBasicMaterial color={SCENE.selection} transparent opacity={0.95} depthWrite={false} />
             </mesh>
             <mesh geometry={beamGeo}>
-              <meshBasicMaterial color={new THREE.Color('#5eead4').multiplyScalar(1.5)} transparent opacity={0.22} depthWrite={false} toneMapped={false} side={THREE.DoubleSide} />
+              <meshBasicMaterial color={SCENE.selection} transparent opacity={0.3} depthWrite={false} side={THREE.DoubleSide} />
             </mesh>
           </>
         )}
         {(hovered || selected) && !selected && (
           <mesh geometry={selRingGeo} position-y={0.1}>
-            <meshBasicMaterial color="#e2e8f0" transparent opacity={0.6} depthWrite={false} />
+            <meshBasicMaterial color={BRAND.ink} transparent opacity={0.45} depthWrite={false} />
           </mesh>
         )}
       </group>

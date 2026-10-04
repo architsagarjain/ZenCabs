@@ -65,7 +65,8 @@ export function App() {
   if (!services) {
     return (
       <div className="boot">
-        <div className="logo big">Z</div>
+        <img src="/brand/zencabs-mark.png" alt="ZenCabs" />
+        <div className="tagline">RIDE THE FUTURE</div>
         <p>Connecting to {DATA_CONFIG.DATA_MODE === 'MOCK' ? 'fleet simulation' : 'ZenCabs backend'}…</p>
       </div>
     );

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { SCENE } from '../config/theme';
 import type { VehicleType } from '../contracts/types';
 
 interface Dims {
@@ -54,11 +55,11 @@ export function carGeometry(type: VehicleType, isEV: boolean) {
   const hit = cache.get(key);
   if (hit) return hit;
   const d = DIMS[type];
-  const white = new THREE.Color('#eef2f6');
-  const glass = new THREE.Color('#14202e');
+  const white = new THREE.Color(SCENE.carBody);
+  const glass = new THREE.Color(SCENE.carGlass);
   const tyre = new THREE.Color('#111418');
-  const stripe = new THREE.Color(isEV ? '#22c55e' : '#14b8a6');
-  const bumper = new THREE.Color('#2a3340');
+  const stripe = new THREE.Color(isEV ? SCENE.carStripeEV : SCENE.carStripe);
+  const bumper = new THREE.Color('#3A4656');
   const r = 0.32;
   const clearance = 0.18;
   const bodyY = clearance + d.bodyH / 2 + 0.1;
@@ -78,8 +79,8 @@ export function carGeometry(type: VehicleType, isEV: boolean) {
   const body = mergeGeometries(parts)!;
   body.computeVertexNormals();
 
-  const head = new THREE.Color('#fff7d6').multiplyScalar(3);
-  const tail = new THREE.Color('#ff2a2a').multiplyScalar(2.2);
+  const head = new THREE.Color('#fff7d6').multiplyScalar(1.3);
+  const tail = new THREE.Color('#ff2a2a').multiplyScalar(1.2);
   const lights = mergeGeometries([
     box(0.36, 0.12, 0.06, -d.W / 2 + 0.3, bodyY + 0.12, -d.L / 2 - 0.01, head),
     box(0.36, 0.12, 0.06, d.W / 2 - 0.3, bodyY + 0.12, -d.L / 2 - 0.01, head),

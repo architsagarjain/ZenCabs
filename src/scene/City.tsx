@@ -10,11 +10,12 @@ import { toScene } from '../core/geo';
 import { rng } from '../core/random';
 import type { MapBlock, MapNetwork } from '../contracts/map';
 import { useServices } from '../store/servicesContext';
+import { SCENE } from '../config/theme';
 import { createBuildingMaterial } from './materials';
 import { LAYER_Y } from './registry';
 
 const ROAD_W = { ARTERIAL: 17, BRIDGE: 17, LOCAL: 10.5, ACCESS: 6 } as const;
-const ROAD_COLOR = { ARTERIAL: '#36445a', BRIDGE: '#3d4b62', LOCAL: '#2a3446', ACCESS: '#2a3446' } as const;
+const ROAD_COLOR = SCENE.road;
 
 type XZ = { x: number; z: number };
 
@@ -69,38 +70,38 @@ export function City() {
     <group>
       <mesh rotation-x={-Math.PI / 2} position-y={LAYER_Y.ground} receiveShadow>
         <planeGeometry args={[16000, 16000]} />
-        <meshStandardMaterial color="#0a111c" roughness={1} />
+        <meshStandardMaterial color={SCENE.ground} roughness={1} />
       </mesh>
       <mesh geometry={built.blocks} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.95} />
       </mesh>
       <mesh geometry={built.river}>
-        <meshStandardMaterial color="#0b3150" roughness={0.18} metalness={0.7} emissive="#05233d" emissiveIntensity={0.6} />
+        <meshStandardMaterial color={SCENE.river} roughness={0.25} metalness={0.15} emissive={SCENE.riverDeep} emissiveIntensity={0.12} />
       </mesh>
       <mesh geometry={built.roads} receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.88} metalness={0.05} />
       </mesh>
       <mesh geometry={built.markings}>
-        <meshBasicMaterial vertexColors toneMapped={false} />
+        <meshBasicMaterial vertexColors />
       </mesh>
       <mesh geometry={built.rails}>
-        <meshStandardMaterial color="#5b6576" metalness={0.8} roughness={0.35} />
+        <meshStandardMaterial color={SCENE.rail} metalness={0.6} roughness={0.4} />
       </mesh>
       <instancedMesh args={[built.buildingGeo, built.buildingMat, built.buildings.length]} ref={(m) => applyInstances(m, built.buildings)} castShadow receiveShadow />
       <instancedMesh args={[built.trunkGeo, undefined, built.trees.length]} ref={(m) => applyInstances(m, built.trees.map((t) => ({ ...t, h: t.h * 0.35, w: 0.5, d: 0.5 })))}>
-        <meshStandardMaterial color="#4a3426" />
+        <meshStandardMaterial color={SCENE.trunk} />
       </instancedMesh>
       <instancedMesh args={[built.crownGeo, undefined, built.trees.length]} ref={(m) => applyInstances(m, built.trees, true)} castShadow>
-        <meshStandardMaterial color="#1f5d3a" roughness={0.9} />
+        <meshStandardMaterial color={SCENE.tree} roughness={0.9} />
       </instancedMesh>
       <instancedMesh args={[built.poleGeo, undefined, built.lamps.length]} ref={(m) => applyInstances(m, built.lamps.map((l) => ({ ...l, y: 0, w: 0.35, d: 0.35, h: 8 })))}>
-        <meshStandardMaterial color="#3a4556" metalness={0.6} roughness={0.4} />
+        <meshStandardMaterial color={SCENE.pole} metalness={0.4} roughness={0.5} />
       </instancedMesh>
       <instancedMesh args={[built.lampGeo, undefined, built.lamps.length]} ref={(m) => applyInstances(m, built.lamps.map((l) => ({ ...l, y: 8, w: 1, d: 1, h: 1 })))}>
-        <meshBasicMaterial color={new THREE.Color('#ffc988').multiplyScalar(4)} toneMapped={false} />
+        <meshStandardMaterial color={SCENE.lampHead} emissive={SCENE.lampHead} emissiveIntensity={0.25} />
       </instancedMesh>
       <instancedMesh args={[built.lampGeo, undefined, built.runwayLights.length]} ref={(m) => applyInstances(m, built.runwayLights)}>
-        <meshBasicMaterial color={new THREE.Color('#5aa9ff').multiplyScalar(5)} toneMapped={false} />
+        <meshBasicMaterial color={SCENE.runwayLight} />
       </instancedMesh>
       <Landmarks net={net} />
     </group>
@@ -155,7 +156,7 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
       for (let s = w; s < len - w; s += 12) {
         const p = { x: a.x + ux * s, z: a.z + uz * s };
         const q = { x: a.x + ux * (s + 5), z: a.z + uz * (s + 5) };
-        markParts.push(colored(strip(p, q, 0.5, LAYER_Y.marking), new THREE.Color('#f5c04a').multiplyScalar(1.1)));
+        markParts.push(colored(strip(p, q, 0.5, LAYER_Y.marking), SCENE.roadMarking));
       }
     }
     if (e.roadClass === 'BRIDGE') {
@@ -166,7 +167,7 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
         const g = new THREE.BoxGeometry(0.5, 1.1, len);
         g.rotateY(Math.atan2(ux, uz));
         g.translate((a.x + b.x) / 2 + nx * o, 0.6, (a.z + b.z) / 2 + nz * o);
-        roadParts.push(colored(g, '#8a97ab'));
+        roadParts.push(colored(g, SCENE.bridgeRail));
       }
     }
   }
@@ -181,15 +182,7 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
   const trees: Inst[] = [];
   const rails: THREE.BufferGeometry[] = [];
   const runwayLights: Inst[] = [];
-  const blockColor: Record<MapBlock['kind'], string> = {
-    URBAN: '#0d141f',
-    DENSE: '#0f1622',
-    PARK: '#0f2a1d',
-    AIRPORT: '#121a24',
-    BASE: '#131b27',
-    RAIL: '#15181f',
-    CAMPUS: '#11251c',
-  };
+  const blockColor: Record<MapBlock['kind'], string> = SCENE.blocks;
   const airportRects: ReturnType<typeof blockRect>[] = [];
 
   for (const b of net.blocks) {
@@ -226,7 +219,7 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
         const x = x0 + 40 + (i % 2) * (x1 - x0 - 120);
         const z = z0 + 40 + Math.floor(i / 2) * (z1 - z0 - 110);
         if (wet(x + 30, z + 25, 20)) continue;
-        buildings.push({ x: x + 35, z: z + 30, w: 70, d: 45, h: 14 + rand() * 6, color: new THREE.Color('#3a3448') });
+        buildings.push({ x: x + 35, z: z + 30, w: 70, d: 45, h: 14 + rand() * 6, color: new THREE.Color(SCENE.buildingWarm) });
       }
     }
     if (b.kind === 'RAIL') {
@@ -238,7 +231,7 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
           rails.push(g);
         }
       }
-      buildings.push({ x: cx, z: z0 + 30, w: Math.min(220, x1 - x0 - 20), d: 26, h: 11, color: new THREE.Color('#4a3a32') });
+      buildings.push({ x: cx, z: z0 + 30, w: Math.min(220, x1 - x0 - 20), d: 26, h: 11, color: new THREE.Color(SCENE.buildingWarm) });
     }
     if (b.kind === 'URBAN' || b.kind === 'DENSE' || b.kind === 'BASE') {
       const dense = b.kind === 'DENSE';
@@ -262,8 +255,8 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
           let h = dense ? 8 + rand() * 12 : 6 + rand() * 9;
           if (towerZone && rand() < 0.07) h = 28 + rand() * 30;
           const shade = 0.75 + rand() * 0.5;
-          const base = new THREE.Color(dense ? '#3a4054' : '#323d52').multiplyScalar(shade);
-          if (rand() < 0.15) base.lerp(new THREE.Color('#4a4038'), 0.5);
+          const base = new THREE.Color(SCENE.building[Math.floor(rand() * SCENE.building.length)]).multiplyScalar(0.94 + shade * 0.05);
+          if (rand() < 0.18) base.set(SCENE.buildingWarm);
           buildings.push({ x: lx, z: lz, w, d, h, color: base });
         }
       }
@@ -279,20 +272,20 @@ function buildCity(net: MapNetwork, lotCenter: XZ | null) {
     const g = new THREE.PlaneGeometry(x1 - x0 - 10, z1 - z0 - 10);
     g.rotateX(-Math.PI / 2);
     g.translate((x0 + x1) / 2, LAYER_Y.block, (z0 + z1) / 2);
-    blockParts.push(colored(g, '#152218'));
+    blockParts.push(colored(g, SCENE.blocks.AIRPORT));
     const rz = (z0 + z1) / 2 + 60;
     const rx0 = x0 + 60;
     const rx1 = x1 - 60;
-    blockParts.push(colored(strip({ x: rx0, z: rz }, { x: rx1, z: rz }, 46, LAYER_Y.road), '#222833'));
-    blockParts.push(colored(strip({ x: rx0 + 100, z: rz - 110 }, { x: rx1 - 100, z: rz - 110 }, 22, LAYER_Y.road), '#20262f'));
-    for (let x = rx0 + 30; x < rx1 - 30; x += 40) markParts.push(colored(strip({ x, z: rz }, { x: x + 20, z: rz }, 1, LAYER_Y.marking), '#9aa4b2'));
+    blockParts.push(colored(strip({ x: rx0, z: rz }, { x: rx1, z: rz }, 46, LAYER_Y.road), SCENE.runway));
+    blockParts.push(colored(strip({ x: rx0 + 100, z: rz - 110 }, { x: rx1 - 100, z: rz - 110 }, 22, LAYER_Y.road), SCENE.road.ARTERIAL));
+    for (let x = rx0 + 30; x < rx1 - 30; x += 40) markParts.push(colored(strip({ x, z: rz }, { x: x + 20, z: rz }, 1, LAYER_Y.marking), SCENE.roadMarking));
     for (let x = rx0; x <= rx1; x += 30) {
       runwayLights.push({ x, z: rz - 24, w: 0.9, d: 0.9, h: 0.9, y: 0.3 });
       runwayLights.push({ x, z: rz + 24, w: 0.9, d: 0.9, h: 0.9, y: 0.3 });
     }
-    blockParts.push(colored(strip({ x: x0 + 200, z: z0 + 70 }, { x: x1 - 200, z: z0 + 70 }, 70, LAYER_Y.road), '#272e39'));
-    buildings.push({ x: (x0 + x1) / 2, z: z0 + 30, w: 260, d: 40, h: 16, color: new THREE.Color('#3b4c63') });
-    buildings.push({ x: x1 - 160, z: z0 + 34, w: 12, d: 12, h: 42, color: new THREE.Color('#516079') });
+    blockParts.push(colored(strip({ x: x0 + 200, z: z0 + 70 }, { x: x1 - 200, z: z0 + 70 }, 70, LAYER_Y.road), SCENE.road.LOCAL));
+    buildings.push({ x: (x0 + x1) / 2, z: z0 + 30, w: 260, d: 40, h: 16, color: new THREE.Color('#FFFFFF') });
+    buildings.push({ x: x1 - 160, z: z0 + 34, w: 12, d: 12, h: 42, color: new THREE.Color('#E6F7FC') });
   }
 
   // Street lights along arterials.
@@ -352,7 +345,7 @@ function Landmarks({ net }: { net: MapNetwork }) {
         <group key={l.landmarkId} position={[l.p.x, 0, l.p.z]}>
           <mesh position-y={60}>
             <cylinderGeometry args={[0.8, 0.8, 120, 8, 1, true]} />
-            <meshBasicMaterial color="#5eead4" transparent opacity={0.16} depthWrite={false} toneMapped={false} />
+            <meshBasicMaterial color={SCENE.landmarkBeam} transparent opacity={0.28} depthWrite={false} />
           </mesh>
           <Html position={[0, 130, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
             <div className="landmark-label">
@@ -366,11 +359,11 @@ function Landmarks({ net }: { net: MapNetwork }) {
         <group position={[temple.p.x + 40, 0, temple.p.z - 40]}>
           <mesh position-y={6} castShadow>
             <boxGeometry args={[30, 12, 30]} />
-            <meshStandardMaterial color="#c9b48a" />
+            <meshStandardMaterial color="#F3E7D3" />
           </mesh>
           <mesh position-y={26} castShadow>
             <coneGeometry args={[10, 28, 8]} />
-            <meshStandardMaterial color="#d4a530" metalness={0.8} roughness={0.25} emissive="#7a5200" emissiveIntensity={0.6} />
+            <meshStandardMaterial color="#D9A62E" metalness={0.7} roughness={0.3} />
           </mesh>
         </group>
       )}
