@@ -1,0 +1,11 @@
+import { createContext, useContext } from 'react';
+import type { Services } from '../services';
+
+export const ServicesContext = createContext<Services | null>(null);
+
+/** Access the service layer from any component (actions + high-frequency data). */
+export function useServices(): Services {
+  const s = useContext(ServicesContext);
+  if (!s) throw new Error('useServices must be used inside <ServicesContext.Provider>');
+  return s;
+}
