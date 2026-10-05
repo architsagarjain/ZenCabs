@@ -66,7 +66,7 @@ function Pin({ x, z, color, label }: { x: number; z: number; color: string; labe
   useFrame(({ clock, camera }) => {
     if (!ref.current) return;
     const d = camera.position.distanceTo(new THREE.Vector3(x, 0, z));
-    ref.current.scale.setScalar(THREE.MathUtils.clamp(d / 220, 1, 10));
+    ref.current.scale.setScalar(THREE.MathUtils.clamp(d / 220, 1, 120));
     ref.current.position.y = 0.5 + Math.sin(clock.elapsedTime * 3) * 0.3;
   });
   const c = useMemo(() => new THREE.Color(color), [color]);
@@ -116,7 +116,7 @@ function RequestMarker({ lat, lng }: { lat: number; lng: number }) {
   useFrame(({ clock, camera }) => {
     const t = (clock.elapsedTime * 0.8) % 1;
     const d = camera.position.distanceTo(new THREE.Vector3(p.x, 0, p.z));
-    const base = THREE.MathUtils.clamp(d / 260, 1, 8);
+    const base = THREE.MathUtils.clamp(d / 260, 1, 100);
     ring.current?.scale.setScalar(base * (1 + t * 2.5));
     if (mat.current) mat.current.opacity = 0.9 * (1 - t);
   });
@@ -145,9 +145,8 @@ export function ZonesOverlay() {
         const zone = mapService.zone(z.zoneId);
         if (!zone) return null;
         const c = toScene(zone.center.lat, zone.center.lng);
-        const demand = z.pendingRequests + z.forecastNext30 / 3;
-        const ratio = demand > 0 ? z.supply / demand : 2;
-        const color = ratio >= 1 ? SCENE.zoneOk : ratio >= 0.5 ? SCENE.zoneTight : SCENE.zoneShort;
+        // Colour by the actual shortfall: covered, short by one, or short by two or more.
+        const color = z.gap <= 0 ? SCENE.zoneOk : z.gap === 1 ? SCENE.zoneTight : SCENE.zoneShort;
         const h = 30 + z.forecastNext30 * 14;
         return (
           <group key={z.zoneId} position={[c.x, 0, c.z]}>

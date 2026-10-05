@@ -1,5 +1,5 @@
 /**
- * Fictional ZenCabs base parking facility (digital twin geometry).
+ * ZenCabs base parking facility (digital twin geometry; layout is illustrative until the real lot is surveyed).
  *
  * Replace this module's output with the real lot survey (same ParkingLotLayout
  * shape) and the 3D twin + simulation follow automatically.
@@ -19,7 +19,6 @@
  */
 import { fromScene } from '../../core/geo';
 import type { ParkingBay, ParkingLotLayout } from '../../contracts/types';
-import { BASE_LOT_SW } from './cityMap';
 
 export const LOT_W = 50;
 export const LOT_D = 64;
@@ -36,10 +35,13 @@ const ROWS: { row: string; y: number; rotation: number; aisle: 1 | 2 }[] = [
   { row: 'D', y: 23.6, rotation: 180, aisle: 2 },
 ];
 
-let cached: ParkingLotLayout | null = null;
+const cache = new Map<string, ParkingLotLayout>();
 
-export function buildParkingLot(): ParkingLotLayout {
-  if (cached) return cached;
+/** @param lotSW south-west corner of the lot in scene metres (placed by jammuMap.buildWorld). */
+export function buildParkingLot(lotSW: { x: number; z: number }): ParkingLotLayout {
+  const key = `${lotSW.x.toFixed(2)},${lotSW.z.toFixed(2)}`;
+  const hit = cache.get(key);
+  if (hit) return hit;
   const bays: ParkingBay[] = [];
   for (const r of ROWS) {
     for (let i = 0; i < 10; i++) {
@@ -59,10 +61,10 @@ export function buildParkingLot(): ParkingLotLayout {
   bays.push({ bayId: 'S01', row: 'S', x: 17, y: 9, rotation: 180, width: 4.2, length: 7, kind: 'SERVICE' });
   bays.push({ bayId: 'S02', row: 'S', x: 22, y: 9, rotation: 180, width: 4.2, length: 7, kind: 'SERVICE' });
 
-  cached = {
+  const layout: ParkingLotLayout = {
     lotId: 'LOT-JMU-01',
     name: 'ZenCabs Base — Gandhi Nagar',
-    origin: fromScene(BASE_LOT_SW.x, BASE_LOT_SW.z),
+    origin: fromScene(lotSW.x, lotSW.z),
     bearing: 0,
     width: LOT_W,
     depth: LOT_D,
@@ -79,7 +81,8 @@ export function buildParkingLot(): ParkingLotLayout {
       { id: 'workshop', name: 'Service Bay', x: 19.5, y: 8, w: 11, d: 10, h: 5.5 },
     ],
   };
-  return cached;
+  cache.set(key, layout);
+  return layout;
 }
 
 /** Aisle that serves a bay, and the y at which the vehicle turns into it. */

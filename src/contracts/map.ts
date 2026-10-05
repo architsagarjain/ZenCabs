@@ -1,14 +1,17 @@
 /**
  * Map / geography payload (GET /api/map/network).
  *
- * In the prototype this describes a fictional Jammu-like city that the
- * simulation drives on and the 3D scene renders. In production it can be
- * replaced by OSM/Mapbox-derived data; vehicles are positioned purely by
- * lat/lng so the fleet layer does not depend on it.
+ * Built from real data for Jammu and neighbouring towns: OpenStreetMap roads +
+ * Google / Microsoft / OSM building footprints, packaged by Overture Maps
+ * (see scripts/build_jammu_map.py). The simulation drives on this graph and the
+ * 3D scene renders it. Vehicles are positioned purely by lat/lng, so the fleet
+ * layer does not depend on it.
+ *
+ * Polylines use flat GeoJSON-order arrays: [lng, lat, lng, lat, …].
  */
 import type { LatLng } from './types';
 
-export type RoadClass = 'ARTERIAL' | 'LOCAL' | 'BRIDGE' | 'ACCESS';
+export type RoadClass = 'TRUNK' | 'PRIMARY' | 'SECONDARY' | 'TERTIARY' | 'RESIDENTIAL' | 'SERVICE' | 'ACCESS';
 
 export interface MapNode extends LatLng {
   nodeId: string;
@@ -21,33 +24,45 @@ export interface MapEdge {
   roadClass: RoadClass;
   name: string;
   lengthM: number;
+  /** Full polyline from `from` to `to`, flat [lng, lat, …]. */
+  coords: number[];
+  bridge: boolean;
+  /** Part of the main connected network (used for routing). */
+  routable: boolean;
 }
 
-export type BlockKind = 'URBAN' | 'DENSE' | 'PARK' | 'AIRPORT' | 'BASE' | 'RAIL' | 'CAMPUS';
+export type AreaKind = 'WATER' | 'PARK' | 'MILITARY' | 'INSTITUTION' | 'INDUSTRIAL';
+export type LineKind = 'WATER' | 'RAIL' | 'TAXIWAY';
 
-export interface MapBlock {
-  blockId: string;
-  kind: BlockKind;
-  /** Rectangle corners (south-west, north-east). */
-  sw: LatLng;
-  ne: LatLng;
-  seed: number;
+export interface MapArea {
+  kind: AreaKind;
+  ring: number[];
+}
+
+export interface MapLine {
+  kind: LineKind;
+  widthM: number;
+  name: string;
+  coords: number[];
 }
 
 export interface Landmark extends LatLng {
   landmarkId: string;
   name: string;
-  kind: 'AIRPORT' | 'RAIL' | 'BUS' | 'TEMPLE' | 'HOSPITAL' | 'MALL' | 'FORT' | 'UNIVERSITY' | 'BASE';
+  kind: 'AIRPORT' | 'RAIL' | 'BUS' | 'TEMPLE' | 'HOSPITAL' | 'MALL' | 'FORT' | 'UNIVERSITY' | 'TOWN' | 'BASE';
   zoneId: string | null;
   nodeId: string;
 }
 
 export interface MapNetwork {
   name: string;
+  attribution: string;
   nodes: MapNode[];
   edges: MapEdge[];
-  river: { name: string; widthM: number; points: LatLng[] };
-  blocks: MapBlock[];
+  areas: MapArea[];
+  lines: MapLine[];
   landmarks: Landmark[];
   bounds: { sw: LatLng; ne: LatLng };
+  /** Binary building footprints (see scripts/build_jammu_map.py for the record format). */
+  buildings: { url: string; count: number };
 }

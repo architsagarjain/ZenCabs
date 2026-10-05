@@ -63,15 +63,18 @@ export async function createServices(config: DataConfig = DATA_CONFIG): Promise<
 
   if (config.DATA_MODE === 'MOCK') {
     // Lazy-load the simulation so it is not part of a LIVE bundle's hot path.
-    const [{ SimulationEngine }, { createMockRouter }, { MockApiClient }, { MockGPSProvider }] = await Promise.all([
+    const [{ SimulationEngine }, { createMockRouter }, { MockApiClient }, { MockGPSProvider }, { fetchMapData }] = await Promise.all([
       import('../mock/SimulationEngine'),
       import('../mock/mockRouter'),
       import('../transport/MockApiClient'),
       import('../providers/gps/MockGPSProvider'),
+      import('../mock/world/jammuMap'),
     ]);
+    // Real Jammu road network (OpenStreetMap via Overture Maps), served as a static file.
+    const map = await fetchMapData();
     const simClock = new SimClock(Date.now(), config.SIM_SPEED);
     clock = simClock;
-    const engine = new SimulationEngine({ clock: simClock });
+    const engine = new SimulationEngine({ clock: simClock, map });
     engine.start();
     api = new MockApiClient(createMockRouter(engine));
     // Location updates reach the UI via the GPS provider, as they would from a telematics vendor.

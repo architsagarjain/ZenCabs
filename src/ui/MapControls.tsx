@@ -1,6 +1,7 @@
 import { STATUS_COLORS, STATUS_LABEL, IDLE_COLORS, IDLE_LABEL } from '../core/format';
 import { VEHICLE_STATUSES } from '../contracts/types';
 import { useFleetStore } from '../store/fleetStore';
+import { useServices } from '../store/servicesContext';
 
 export function MapControls() {
   const showLabels = useFleetStore((s) => s.showLabels);
@@ -13,6 +14,7 @@ export function MapControls() {
     <div className="map-controls">
       <div className="group">
         <span className="glabel">Camera</span>
+        <button onClick={() => camera({ kind: 'preset', preset: 'REGION' })}>Region</button>
         <button onClick={() => camera({ kind: 'preset', preset: 'CITY' })}>City</button>
         <button onClick={() => camera({ kind: 'preset', preset: 'OVERVIEW' })}>Overview</button>
         <button onClick={() => camera({ kind: 'preset', preset: 'BASE' })}>Base</button>
@@ -49,4 +51,10 @@ export function MapControls() {
       </div>
     </div>
   );
+}
+
+/** Required credit for the OpenStreetMap / Overture / building-footprint data. */
+export function MapAttribution() {
+  const { mapService } = useServices();
+  return <div className="map-attribution">Map data {mapService.network.attribution}</div>;
 }

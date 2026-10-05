@@ -7,6 +7,9 @@ import type { GPSFix } from '../../contracts/types';
 import type { GPSProvider } from '../../providers/gps/GPSProvider';
 import { GpsService } from '../gpsService';
 import { SimulationEngine } from '../../mock/SimulationEngine';
+import { loadMapDataSync } from '../../mock/world/loadMapNode';
+
+const map = loadMapDataSync();
 
 class ManualClock implements Clock {
   speed = 1;
@@ -82,7 +85,7 @@ describe('gpsService interpolation', () => {
 describe('telemetry behaviour', () => {
   it('offline vehicles never report GPS', () => {
     const clock = new ManualClock(Date.parse('2026-10-04T12:00:00Z'));
-    const engine = new SimulationEngine({ clock });
+    const engine = new SimulationEngine({ clock, map });
     const offline = engine.getVehicles().filter((v) => v.status === 'OFFLINE').map((v) => v.vehicleId);
     expect(offline).toHaveLength(2);
     const seen = new Set<string>();

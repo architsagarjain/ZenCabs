@@ -6,7 +6,7 @@ import { bindServicesToStore, useFleetStore } from './store/fleetStore';
 import { ServicesContext } from './store/servicesContext';
 import { DispatchConsole } from './ui/DispatchConsole';
 import { FleetPanel } from './ui/FleetPanel';
-import { MapControls } from './ui/MapControls';
+import { MapAttribution, MapControls } from './ui/MapControls';
 import { OperationsPanel } from './ui/OperationsPanel';
 import { ActivityFeed, AlertsPanel, CallDriverModal } from './ui/SideFeeds';
 import { Toasts } from './ui/Toasts';
@@ -45,6 +45,7 @@ export function App() {
       if (e.key === 'o') st.setView(st.view === 'OPERATIONS' ? 'COMMAND' : 'OPERATIONS');
       if (e.key === 'b') st.camera({ kind: 'preset', preset: 'BASE' });
       if (e.key === 'c') st.camera({ kind: 'preset', preset: 'CITY' });
+      if (e.key === 'r') st.camera({ kind: 'preset', preset: 'REGION' });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -97,6 +98,7 @@ function Shell() {
         </div>
       )}
       <MapControls />
+      <MapAttribution />
       <DispatchConsole />
       <CallDriverModal />
       <Toasts />

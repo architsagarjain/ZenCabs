@@ -18,7 +18,10 @@ export function CameraRig() {
   const lotCenter = parkingService.localToScene(lot.width / 2, lot.depth / 2);
 
   const presets: Record<CameraPreset, [number, number, number, number, number, number]> = {
-    CITY: [1500, 2300, 3100, 0, 0, 150],
+    // Jammu + Nagrota, Akhnoor, R.S. Pura, Bari Brahmana, Vijaypur
+    REGION: [9000, 30000, 34000, 1500, 0, 3500],
+    // Jammu city core (old city, Gandhi Nagar, airport, railway station)
+    CITY: [2600, 6200, 7600, 600, 0, 400],
     OVERVIEW: [lotCenter.x + 250, 330, lotCenter.z + 470, lotCenter.x - 40, 0, lotCenter.z - 120],
     BASE: [lotCenter.x + 48, 62, lotCenter.z + 78, lotCenter.x, 0, lotCenter.z],
   };
@@ -83,13 +86,29 @@ export function CameraRig() {
       ref={ref}
       makeDefault
       minDistance={8}
-      maxDistance={6500}
+      maxDistance={70000}
       maxPolarAngle={Math.PI * 0.47}
       smoothTime={0.55}
       draggingSmoothTime={0.12}
       dollyToCursor
     />
   );
+}
+
+/** Haze that scales with zoom: crisp up close, still readable from 40 km up. */
+export function DynamicFog() {
+  const fog = useThree((s) => s.scene.fog) as THREE.Fog | null;
+  const controls = useThree((s) => s.controls) as unknown as CameraControls | null;
+  const camera = useThree((s) => s.camera);
+  const t = new THREE.Vector3();
+  useFrame(() => {
+    if (!fog || !controls) return;
+    controls.getTarget(t);
+    const d = camera.position.distanceTo(t);
+    fog.near = Math.max(2500, d * 1.1);
+    fog.far = Math.max(12000, d * 3.2);
+  });
+  return null;
 }
 
 /** Keeps the moon-light shadow frustum centred on whatever the camera looks at. */

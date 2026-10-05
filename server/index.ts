@@ -15,10 +15,11 @@ import type { RealtimeEnvelope, RealtimeEventName } from '../src/contracts/event
 import { SimClock } from '../src/core/clock';
 import { SimulationEngine } from '../src/mock/SimulationEngine';
 import { createMockRouter } from '../src/mock/mockRouter';
+import { loadMapDataFromFile } from '../src/mock/world/loadMapNode';
 
 const PORT = Number(process.env.PORT ?? 8787);
 const clock = new SimClock(Date.now(), 1); // real time: LIVE clients use wall-clock time
-const engine = new SimulationEngine({ clock });
+const engine = new SimulationEngine({ clock, map: await loadMapDataFromFile() });
 engine.start();
 const handle = createMockRouter(engine);
 

@@ -47,7 +47,9 @@ The rule that makes this possible: **the UI and 3D scene never touch mock data**
 | `src/store/` | UI state and throttled service snapshots. |
 | `src/scene/` | 3D city, parking-lot digital twin, vehicles, overlays and camera. |
 | `src/ui/` | DOM overlay: top HUD, fleet list, vehicle panel, Operations view, dispatch console. |
-| `src/mock/` | Simulation engine, seed data, fictional city, parking layout and mock REST router. **UI never imports this.** |
+| `src/mock/` | Simulation engine, seed data, real-map loader (`world/jammuMap.ts`), parking layout and mock REST router. **UI never imports this.** |
+| `scripts/` | Fetch + build the real Jammu map from Overture Maps (OpenStreetMap roads, building footprints). |
+| `public/maps/` | Built map files: road graph JSON and building footprints binary. |
 | `server/` | Reference backend serving the same contracts (proves LIVE mode works). |
 | `db/schema.sql` | Production PostgreSQL schema. |
 
@@ -80,7 +82,7 @@ The rule that makes this possible: **the UI and 3D scene never touch mock data**
    - **Backend relays positions** → `ZenCabsGPSProvider` works as-is.
    - **Browser reads a vendor directly** → add `VendorGPSProvider implements GPSProvider` and select it in `createServices`.
 4. Replace the parking layout. Serve the surveyed lot as `ParkingLotLayout` from `GET /api/parking/layout`: bays with local x/y/rotation, aisles, gate, and `origin` + `bearing` to place it on the map.
-5. Replace the basemap. `mapService` currently loads the fictional network from `/api/map/network`; point it at OSM or vector-tile data.
+5. Basemap. `mapService` loads the real Jammu network (OpenStreetMap via Overture) from `/api/map/network` plus `public/maps/jammu-buildings.bin`. In production this can stay as a static asset, or move to vector tiles if the area grows.
 6. Run with `VITE_DATA_MODE=LIVE VITE_API_BASE_URL=… VITE_WS_URL=…`.
 
 No component in `src/ui` or `src/scene` needs to change.
@@ -89,11 +91,12 @@ No component in `src/ui` or `src/scene` needs to change.
 
 `src/mock/SimulationEngine.ts`:
 
-- **City.** A fictional Jammu-like road graph (~200 intersections):
-  - arterials with real road names
-  - the Tawi river with 4 bridges
-  - 14 real place names, such as Jammu Airport, Jammu Tawi Railway Station and Raghunath Temple
-- **Driving.** Left-hand lanes with Dijkstra routing. Speed depends on road class, with slowdowns at corners and random traffic-signal stops. Inside the lot, cars follow the aisles and reverse out of bays.
+- **City.** The real road network of Jammu and neighbouring towns from OpenStreetMap (via Overture Maps):
+  - ~30,000 junctions and ~37,000 road links with real names and road classes (trunk to residential)
+  - real Tawi bridges, the Ranbir Canal, parks and rail lines
+  - 22 real places as demand zones, from Jammu Airport and Jammu Tawi Railway Station to Nagrota, Akhnoor, R.S. Pura, Bari Brahmana and Vijaypur
+- **Driving.** Left-hand lanes along the real road geometry, with A* routing weighted by road-class speed (about 25 km/h average in city traffic). Cars slow on bends and may stop at junctions of major roads (signals). Inside the lot, cars follow the aisles and reverse out of bays.
+- **Trips.** Mostly 1–4.5 km within the city, plus about 5% outstation rides to the neighbouring towns.
 - **Demand.** Poisson ride requests per zone with drifting surges and airport "flight arrival" bursts. Requests auto-dispatch to the best-ranked vehicle after a short search window.
 - **Lifecycle.** Driver acceptance delay, then drive to pickup, then a wait (occasionally long, which raises an alert), then the trip.
 - **After a trip.** The car stays in the field, or returns to base when charge is low, by chance, or when idle too long.

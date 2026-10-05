@@ -25,9 +25,13 @@ Useful URL flags:
 
 ![Operations view](docs/screenshots/operations.png)
 
-| Base parking twin | Vehicle follow + route | Dispatch console |
+| Jammu city (real map) | Region: Nagrota, Akhnoor, R.S. Pura… | Base parking twin |
 | --- | --- | --- |
-| ![](docs/screenshots/base-parking.png) | ![](docs/screenshots/vehicle-follow.png) | ![](docs/screenshots/dispatch.png) |
+| ![](docs/screenshots/city.png) | ![](docs/screenshots/region.png) | ![](docs/screenshots/base-parking.png) |
+
+| Vehicle follow + route | Dispatch console |
+| --- | --- |
+| ![](docs/screenshots/vehicle-follow.png) | ![](docs/screenshots/dispatch.png) |
 
 ### Try LIVE mode (same UI, real HTTP + WebSocket)
 
@@ -39,7 +43,7 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 ## What's in the prototype
 
 **3D city and digital twin**
-- A daylight Jammu-like city: arterial roads, the Tawi river with bridges, the airport, the railway station and landmarks.
+- The **real map of Jammu** and neighbouring towns (Nagrota, Akhnoor, R.S. Pura, Bari Brahmana, Vijaypur): real streets with their names, the Tawi river and its bridges, the Ranbir Canal, parks, rail lines and about 150,000 real building footprints. Simulated cars drive on the actual road network.
 - The ZenCabs base lot with **40 bays (A01–D10)**, 2 service bays and EV chargers.
 - Cars physically occupy bays. A bay shows as empty when its car leaves, and returning cars drive in through the gate and aisles into a free bay.
 
@@ -80,7 +84,7 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 - Critical alerts also pop up as toasts.
 - A dispatch activity feed shows events as they happen.
 
-Keyboard: `Esc` deselect · `o` Operations · `b` base camera · `c` city camera.
+Keyboard: `Esc` deselect · `o` Operations · `b` base camera · `c` city camera · `r` region camera.
 
 ## Brand
 
@@ -127,4 +131,25 @@ Configuration lives in `src/config/dataConfig.ts` and `.env` (see `.env.example`
 
 React 19, three.js via @react-three/fiber and drei, postprocessing (bloom), zustand, Vite and TypeScript.
 
-There are no external 3D assets or map tiles: the city, cars and lot are generated procedurally.
+There are no paid services or map tiles: the city is built from free open data at build time (see below), and the cars and parking lot are generated procedurally.
+
+## Real map data
+
+The map comes from [Overture Maps](https://overturemaps.org), which packages OpenStreetMap roads with Google Open Buildings and Microsoft building footprints. It's free and needs no API key. Two files are committed and served as static assets:
+
+| File | Contents |
+| --- | --- |
+| `public/maps/jammu-map.json` (2.8 MB) | Road graph with geometry and names, water, parks, rail, airport taxiways, landmarks |
+| `public/maps/jammu-buildings.bin` (1.8 MB) | Building footprints as oriented boxes (heights estimated: the source data has none) |
+
+To refresh the data or change the area:
+
+```bash
+pip install overturemaps
+scripts/fetch_jammu_map.sh raw            # downloads the raw layers (~150 MB)
+python3 scripts/build_jammu_map.py raw    # rewrites the two files above
+```
+
+- **Area:** edit the bounding boxes at the top of both scripts. Landmarks and their demand weights are in `LANDMARKS` in `build_jammu_map.py`.
+- **Base lot location:** set `BASE_ANCHOR` in `src/mock/world/jammuMap.ts` to your real depot. The lot is placed on the nearest street with room for it, and buildings under it are cleared.
+- **Credit (required by the licences):** the app shows "Map data © OpenStreetMap contributors · Overture Maps Foundation · Google Open Buildings · Microsoft Building Footprints" on screen.

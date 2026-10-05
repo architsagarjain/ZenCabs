@@ -1192,6 +1192,19 @@ select:focus {
   background: var(--line-strong);
 }
 
+.map-attribution {
+  position: absolute;
+  right: 18px;
+  bottom: 86px;
+  z-index: 58;
+  font-size: 10px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.8);
+  padding: 2px 8px;
+  border-radius: 6px;
+  pointer-events: none;
+}
+
 /* ───────────── 3D labels (drei Html) */
 .landmark-label {
   white-space: nowrap;
@@ -1207,6 +1220,20 @@ select:focus {
   display: flex;
   gap: 6px;
   align-items: center;
+}
+.landmark-label.city {
+  font-size: 16px;
+  padding: 6px 16px;
+  color: #04263a;
+  background: var(--brand-gradient);
+  border: 0;
+}
+.landmark-label.town {
+  font-size: 13px;
+  padding: 4px 12px;
+  background: #ffffff;
+  border-color: var(--tagline);
+  color: var(--tagline);
 }
 .veh-label {
   white-space: nowrap;

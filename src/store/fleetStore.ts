@@ -4,7 +4,7 @@ import type { Services } from '../services';
 import type { DispatchActivity } from '../services/dispatchService';
 
 export type ViewMode = 'COMMAND' | 'OPERATIONS';
-export type CameraPreset = 'CITY' | 'BASE' | 'OVERVIEW';
+export type CameraPreset = 'REGION' | 'CITY' | 'BASE' | 'OVERVIEW';
 export type DetailTab = 'OVERVIEW' | 'DRIVER' | 'TRIPS' | 'DISPATCH';
 export type FleetFilter = VehicleStatus | 'PARKED_1H' | 'ALL' | 'AT_BASE' | 'BUSY';
 

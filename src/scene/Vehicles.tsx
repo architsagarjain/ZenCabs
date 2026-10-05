@@ -72,7 +72,7 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
   const geo = useMemo(() => carGeometry(v.vehicleType, v.fuelKind === 'ELECTRIC'), [v.vehicleType, v.fuelKind]);
   const statusColor = STATUS_COLORS[v.status];
   const signMat = useMemo(() => new THREE.MeshBasicMaterial(), []);
-  const beaconMat = useMemo(() => new THREE.MeshBasicMaterial({ depthTest: false, transparent: true }), []);
+  const beaconMat = useMemo(() => new THREE.MeshBasicMaterial({ depthTest: false, transparent: true, fog: false }), []);
   const stemMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.45, depthWrite: false }), []);
   const ringMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.85, depthWrite: false }), []);
   const parkedMs = v.parkingEntryTime ? now - v.parkingEntryTime : null;
@@ -134,8 +134,8 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
       const far = d > 260;
       beacon.current.visible = stem.current.visible = far;
       if (far) {
-        const h = THREE.MathUtils.clamp(d / 22, 14, 120);
-        const r = THREE.MathUtils.clamp(d / 170, 1.5, 22) * (selected ? 1.6 : 1);
+        const h = THREE.MathUtils.clamp(d / 22, 14, 1200);
+        const r = THREE.MathUtils.clamp(d / 170, 1.5, 260) * (selected ? 1.6 : 1);
         beacon.current.position.y = h;
         beacon.current.scale.set(r, r * 1.4, r);
         beacon.current.rotation.y = state.clock.elapsedTime * 1.5;

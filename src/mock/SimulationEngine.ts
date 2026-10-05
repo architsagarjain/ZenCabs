@@ -42,9 +42,9 @@ import type {
   ZoneDemand,
 } from '../contracts/types';
 import { CUSTOMER_NAMES, rng, seedFleet } from './fleetSeed';
-import { buildCity, PLACES } from './world/cityMap';
+import { buildWorld, type RawMapData } from './world/jammuMap';
 import { bayAccess, buildParkingLot, SPINE_X } from './world/parkingLot';
-import { CLASS_SPEED_MPS, RoadGraph } from './world/roadGraph';
+import { CLASS_SPEED_MPS, RoadGraph, type GraphNode } from './world/roadGraph';
 
 type Phase =
   | 'PARKED'
@@ -77,6 +77,8 @@ interface Motion {
   speed: number;
   stopUntil: number;
   onArrive: () => void;
+  /** Cached segment index for s (s only moves forward). */
+  seg: number;
 }
 
 interface SimVehicle {
@@ -99,30 +101,21 @@ interface SimVehicle {
 
 export interface EngineOptions {
   clock: Clock;
+  /** Real Jammu map (public/maps/jammu-map.json). */
+  map: RawMapData;
   seed?: number;
 }
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
-const LANE_OFFSET = 3;
+const LANE_OFFSET = 2.6;
+/** Vehicles operate mostly within this radius of the city centre (outstation trips aside). */
+const CITY_RADIUS = 6500;
+const OUTSTATION_SHARE = 0.05;
+/** City-wide ride requests per minute (Jammu-scale distances, 40 cars). */
+const REQUESTS_PER_MIN = 0.9;
 const LOT_SPEED = 2.6;
 
-const ZONE_DEMAND_WEIGHT: Record<string, number> = {
-  'Z-airport': 1.5,
-  'Z-railway': 1.6,
-  'Z-busstand': 1.3,
-  'Z-raghunath': 0.9,
-  'Z-gmc': 0.8,
-  'Z-gandhinagar': 1.2,
-  'Z-bahuplaza': 1.0,
-  'Z-trikuta': 0.8,
-  'Z-channi': 0.6,
-  'Z-satwari': 0.7,
-  'Z-janipur': 0.6,
-  'Z-university': 0.5,
-  'Z-talabtillo': 0.5,
-  'Z-bahufort': 0.4,
-};
 
 export class SimulationEngine {
   readonly events = new Emitter<RealtimeEvents>();
@@ -133,6 +126,10 @@ export class SimulationEngine {
   readonly clock: Clock;
 
   private graph: RoadGraph;
+  /** Relative ride-request rate per zone (from the map's landmarks). */
+  private demandWeight: Record<string, number>;
+  private demandTotal: number;
+  private cityNodes: GraphNode[];
   private rand: () => number;
   private fleet = new Map<string, SimVehicle>();
   private drivers = new Map<string, Driver>();
@@ -155,11 +152,14 @@ export class SimulationEngine {
   constructor(opts: EngineOptions) {
     this.clock = opts.clock;
     this.rand = rng(opts.seed ?? 7);
-    const city = buildCity();
-    this.network = city.network;
-    this.zones = city.zones;
-    this.layout = buildParkingLot();
+    const world = buildWorld(opts.map);
+    this.network = world.network;
+    this.zones = world.zones;
+    this.demandWeight = world.demand;
+    this.demandTotal = Object.values(world.demand).reduce((a, b) => a + b, 0);
+    this.layout = buildParkingLot(world.lotSW);
     this.graph = new RoadGraph(this.network);
+    this.cityNodes = this.graph.nodeList.filter((n) => n.id !== 'BASE_GATE' && Math.hypot(n.x, n.z) < CITY_RADIUS);
     for (const z of this.zones) this.zoneSurgePhase.set(z.zoneId, this.rand() * Math.PI * 2);
     for (const bay of this.layout.bays) this.bays.set(bay.bayId, { bay, vehicleId: null, entryTime: null, reservedFor: null });
     this.lastTick = this.clock.now();
@@ -288,7 +288,8 @@ export class SimulationEngine {
             sv.phase = 'OFFLINE';
             v.lastGpsUpdate = now - 302 * MIN;
           } else {
-            const n = this.graph.nearest(-1880, 230);
+            const tt = this.zoneCenter('Z-talabtillo');
+            const n = this.graph.nearest(tt.x + 300, tt.z - 200);
             this.setPos(sv, n.x + 6, n.z + 8, 90);
             sv.nodeId = n.id;
             v.lastGpsUpdate = now - 187 * MIN;
@@ -309,7 +310,7 @@ export class SimulationEngine {
           break;
         }
         case 'IDLE_FIELD': {
-          const place = PLACES[[1, 2, 4][fieldIdx++ % 3]];
+          const place = this.zoneCenter(['Z-railway', 'Z-busstand', 'Z-gmc'][fieldIdx++ % 3]);
           const n = this.graph.nearest(place.x, place.z);
           this.setPos(sv, n.x + (this.rand() - 0.5) * 30, n.z + (this.rand() - 0.5) * 30, this.rand() * 360);
           sv.nodeId = n.id;
@@ -338,7 +339,7 @@ export class SimulationEngine {
 
     // Some recent booking history so demand stats are populated from the first frame.
     for (const z of this.zones) {
-      const w = ZONE_DEMAND_WEIGHT[z.zoneId] ?? 0;
+      const w = this.demandWeight[z.zoneId] ?? 0;
       const count = Math.round(w * 9 * (0.6 + this.rand() * 0.8));
       for (let i = 0; i < count; i++) this.zoneRequestLog.push({ zoneId: z.zoneId, at: now - this.rand() * HOUR });
     }
@@ -535,14 +536,23 @@ export class SimulationEngine {
     ];
   }
 
-  /** Converts a node route to path points, with left-hand lane offset. */
+  /** Converts a node route to path points along the real road geometry, with left-hand lane offset. */
   private nodePathPoints(nodeIds: string[]): PathPoint[] {
-    const pts: PathPoint[] = nodeIds.map((id, i) => {
-      const n = this.graph.nodes.get(id)!;
-      const next = nodeIds[i + 1];
-      const e = next ? this.graph.edge(id, next) : undefined;
-      return { x: n.x, z: n.z, nodeId: id, v: e ? CLASS_SPEED_MPS[e.cls] : undefined };
-    });
+    if (nodeIds.length === 1) {
+      const n = this.graph.nodes.get(nodeIds[0])!;
+      return [{ x: n.x, z: n.z, nodeId: n.id }];
+    }
+    const pts: PathPoint[] = [];
+    for (let i = 0; i < nodeIds.length - 1; i++) {
+      const e = this.graph.edge(nodeIds[i], nodeIds[i + 1]);
+      const v = e ? CLASS_SPEED_MPS[e.cls] : 8;
+      const geom = e?.pts ?? [this.graph.nodes.get(nodeIds[i])!, this.graph.nodes.get(nodeIds[i + 1])!];
+      for (let k = 0; k < geom.length - 1; k++) {
+        pts.push({ x: geom[k].x, z: geom[k].z, nodeId: k === 0 ? nodeIds[i] : undefined, v });
+      }
+    }
+    const last = this.graph.nodes.get(nodeIds[nodeIds.length - 1])!;
+    pts.push({ x: last.x, z: last.z, nodeId: last.id });
     return offsetLeft(pts, LANE_OFFSET);
   }
 
@@ -592,7 +602,7 @@ export class SimulationEngine {
     }
     const cum = [0];
     for (let i = 1; i < clean.length; i++) cum.push(cum[i - 1] + Math.hypot(clean[i].x - clean[i - 1].x, clean[i].z - clean[i - 1].z));
-    sv.motion = { pts: clean, cum, s: 0, speed: sv.motion?.speed ?? 0, stopUntil: 0, onArrive };
+    sv.motion = { pts: clean, cum, s: 0, speed: sv.motion?.speed ?? 0, stopUntil: 0, onArrive, seg: 0 };
     sv.nodeId = null;
     sv.nextGpsAt = Math.min(sv.nextGpsAt, now);
   }
@@ -622,7 +632,7 @@ export class SimulationEngine {
     // Traffic signals at arterial intersections.
     for (let k = seg + 1; k < m.pts.length - 1 && m.cum[k] <= ns; k++) {
       const q = m.pts[k];
-      if (q.nodeId && q.nodeId !== 'BASE_GATE' && !q.lot && this.rand() < 0.11) {
+      if (q.nodeId && this.graph.signalNodes.has(q.nodeId) && !q.lot && this.rand() < 0.2) {
         ns = m.cum[k] - 1;
         m.stopUntil = now + (6 + this.rand() * 22) * 1000;
         break;
@@ -799,11 +809,10 @@ export class SimulationEngine {
   private generateDemand(now: number, windowSec: number) {
     const hourFactor = 1;
     for (const z of this.zones) {
-      const w = ZONE_DEMAND_WEIGHT[z.zoneId];
+      const w = this.demandWeight[z.zoneId];
       if (!w) continue;
       const surge = this.zoneSurge(z.zoneId, now);
-      // ~2.4 requests / minute across the city on average
-      const lambda = (w / 14.1) * 2.4 * surge * hourFactor * (windowSec / 60);
+      const lambda = (w / this.demandTotal) * REQUESTS_PER_MIN * surge * hourFactor * (windowSec / 60);
       let n = poisson(lambda, this.rand);
       while (n-- > 0) {
         const node = this.randomNodeInZone(z);
@@ -1044,7 +1053,7 @@ export class SimulationEngine {
       this.events.emit('vehicle.updated', { vehicle: this.snapshot(sv) });
     }
     // Airport flight arrival: burst of demand.
-    if (this.rand() < 0.08) {
+    if (this.rand() < 0.03) {
       const airport = this.zones.find((z) => z.zoneId === 'Z-airport')!;
       const n = 3 + Math.floor(this.rand() * 3);
       for (let i = 0; i < n; i++) {
@@ -1145,6 +1154,22 @@ export class SimulationEngine {
     return best;
   }
 
+  private nearestZone(x: number, z: number): Zone {
+    let best = this.zones[0];
+    let bd = Infinity;
+    for (const zone of this.zones) {
+      const c = toScene(zone.center.lat, zone.center.lng);
+      const d = Math.hypot(c.x - x, c.z - z) - zone.radiusM;
+      if (d < bd) (bd = d), (best = zone);
+    }
+    return best;
+  }
+
+  private zoneCenter(zoneId: string) {
+    const z = this.zones.find((x) => x.zoneId === zoneId) ?? this.zones[0];
+    return toScene(z.center.lat, z.center.lng);
+  }
+
   private randomNodeInZone(zone: Zone) {
     const c = toScene(zone.center.lat, zone.center.lng);
     const nodes = this.graph.nodesWithin(c.x, c.z, zone.radiusM);
@@ -1152,11 +1177,10 @@ export class SimulationEngine {
   }
 
   private demandNode() {
-    const zs = this.zones.filter((z) => ZONE_DEMAND_WEIGHT[z.zoneId]);
-    const total = zs.reduce((s, z) => s + ZONE_DEMAND_WEIGHT[z.zoneId], 0);
-    let r = this.rand() * total;
+    const zs = this.zones.filter((z) => this.demandWeight[z.zoneId]);
+    let r = this.rand() * this.demandTotal;
     for (const z of zs) {
-      r -= ZONE_DEMAND_WEIGHT[z.zoneId];
+      r -= this.demandWeight[z.zoneId];
       if (r <= 0) return this.randomNodeInZone(z);
     }
     return this.randomNodeInZone(zs[0]);
@@ -1164,24 +1188,28 @@ export class SimulationEngine {
 
   private destinationNode(fromId: string) {
     const from = this.graph.nodes.get(fromId)!;
+    // Occasional outstation ride to a neighbouring town (Nagrota, Akhnoor, R.S. Pura, …).
+    if (this.rand() < OUTSTATION_SHARE) {
+      const towns = this.zones.filter((z) => z.radiusM >= 1200 && Math.hypot(...diffXZ(this.zoneCenter(z.zoneId), from)) > 6000);
+      if (towns.length) return this.randomNodeInZone(towns[Math.floor(this.rand() * towns.length)]);
+    }
     for (let i = 0; i < 20; i++) {
       const n = this.rand() < 0.65 ? this.demandNode() : this.randomFieldNode(0);
       const d = Math.hypot(n.x - from.x, n.z - from.z);
-      if (d > 1400 && d < 4200) return n;
+      if (d > 1000 && d < 4500) return n;
     }
     return this.randomFieldNode(900, from);
   }
 
   private randomFieldNode(minFromBase: number, near?: { x: number; z: number }, maxDist = Infinity) {
     const gate = this.graph.nodes.get('BASE_GATE')!;
-    const list = this.graph.nodeList.filter((n) => {
-      if (n.id === 'BASE_GATE') return false;
+    const list = this.cityNodes.filter((n) => {
       if (Math.hypot(n.x - gate.x, n.z - gate.z) < minFromBase) return false;
       if (near && Math.hypot(n.x - near.x, n.z - near.z) > maxDist) return false;
       if (near && Math.hypot(n.x - near.x, n.z - near.z) < 500) return false;
       return true;
     });
-    const pool = list.length ? list : this.graph.nodeList.filter((n) => n.id !== 'BASE_GATE');
+    const pool = list.length ? list : this.cityNodes;
     return pool[Math.floor(this.rand() * pool.length)];
   }
 
@@ -1189,8 +1217,8 @@ export class SimulationEngine {
     const n = this.graph.nodes.get(nodeId)!;
     const zoneId = this.zoneAt(n.x, n.z);
     const zone = this.zones.find((z) => z.zoneId === zoneId);
-    const edge = this.graph.adj.get(nodeId)?.[0];
-    const name = zone ? zone.name : edge ? edge.name : 'Jammu';
+    const named = this.graph.adj.get(nodeId)?.find((e) => e.name);
+    const name = zone ? zone.name : named ? named.name : `Near ${this.nearestZone(n.x, n.z).name}`;
     return { ...fromScene(n.x, n.z), name, zoneId: zoneId ?? undefined };
   }
 
@@ -1311,11 +1339,11 @@ export class SimulationEngine {
   getZoneDemand(): ZoneDemand[] {
     const now = this.clock.now();
     return this.zones
-      .filter((z) => ZONE_DEMAND_WEIGHT[z.zoneId])
+      .filter((z) => this.demandWeight[z.zoneId])
       .map((z) => {
         const pending = [...this.bookings.values()].filter((b) => b.status === 'PENDING' && b.pickup.zoneId === z.zoneId).length;
         const lastHour = this.zoneRequestLog.filter((r) => r.zoneId === z.zoneId && now - r.at < HOUR).length;
-        const forecast = (ZONE_DEMAND_WEIGHT[z.zoneId] / 14.1) * 2.4 * 30 * this.zoneSurge(z.zoneId, now + 15 * MIN);
+        const forecast = (this.demandWeight[z.zoneId] / this.demandTotal) * REQUESTS_PER_MIN * 30 * this.zoneSurge(z.zoneId, now + 15 * MIN);
         return { zoneId: z.zoneId, pendingRequests: pending, requestsLastHour: lastHour, forecastNext30: Math.round(forecast * 10) / 10 };
       });
   }
@@ -1431,8 +1459,9 @@ export class SimulationEngine {
 // ───────────────────────────────────────────── helpers
 
 function segmentIndex(m: Motion, s: number): number {
-  let i = 0;
+  let i = m.cum[m.seg] <= s ? m.seg : 0;
   while (i < m.cum.length - 2 && m.cum[i + 1] <= s) i++;
+  m.seg = i;
   return i;
 }
 
@@ -1510,6 +1539,10 @@ function diff(a: { lat: number; lng: number }, b: { lat: number; lng: number }):
   const pa = toScene(a.lat, a.lng);
   const pb = toScene(b.lat, b.lng);
   return [pa.x - pb.x, pa.z - pb.z];
+}
+
+function diffXZ(a: { x: number; z: number }, b: { x: number; z: number }): [number, number] {
+  return [a.x - b.x, a.z - b.z];
 }
 
 function label(vehicleId: string) {
