@@ -50,7 +50,6 @@ const VehicleObject = memo(function VehicleObject({ id }: { id: string }) {
   const hovered = useFleetStore((s) => s.hoveredVehicleId === id);
   const dimmed = useFleetStore((s) => {
     const veh = s.vehicleMap[id];
-    if (s.view === 'OPERATIONS' && s.filter === 'ALL') return false;
     return !!veh && s.filter !== 'ALL' && !matchesFilter(veh, s.filter, s.now);
   });
   const showLabels = useFleetStore((s) => s.showLabels);

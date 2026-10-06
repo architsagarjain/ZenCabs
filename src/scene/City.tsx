@@ -11,6 +11,7 @@ import { toScene } from '../core/geo';
 import type { MapNetwork } from '../contracts/map';
 import { useServices } from '../store/servicesContext';
 import { SCENE } from '../config/theme';
+import { useLowPower } from '../store/useBreakpoint';
 import { createBuildingMaterial } from './materials';
 import { buildAreas, buildLines, buildRoadOverview, buildRoads, decodeBuildings, treePoints, type BuildingRecord } from './mapGeometry';
 import { LAYER_Y } from './registry';
@@ -19,6 +20,7 @@ export function City() {
   const { mapService, parkingService } = useServices();
   const net = mapService.network;
   const lot = parkingService.layout;
+  const low = useLowPower();
 
   const base = useMemo(() => {
     const roads = buildRoads(net.edges, SCENE.road, SCENE.roadMarking, SCENE.bridgeRail);
@@ -42,13 +44,15 @@ export function City() {
         const b = parkingService.localToScene(lot.width + 8, lot.depth + 8);
         const [x0, x1] = [Math.min(a.x, b.x), Math.max(a.x, b.x)];
         const [z0, z1] = [Math.min(a.z, b.z), Math.max(a.z, b.z)];
-        setBuildings(decodeBuildings(buf).filter((r) => r.x < x0 - r.w / 2 || r.x > x1 + r.w / 2 || r.z < z0 - r.d / 2 || r.z > z1 + r.d / 2));
+        const all = decodeBuildings(buf).filter((r) => r.x < x0 - r.w / 2 || r.x > x1 + r.w / 2 || r.z < z0 - r.d / 2 || r.z > z1 + r.d / 2);
+        // Phones: drop the smallest sheds/annexes to keep the instance count manageable.
+        setBuildings(low ? all.filter((r) => r.w * r.d >= 45) : all);
       })
       .catch((e) => console.warn('[city] buildings unavailable', e));
     return () => {
       alive = false;
     };
-  }, [net, lot, parkingService]);
+  }, [net, lot, parkingService, low]);
 
   return (
     <group>

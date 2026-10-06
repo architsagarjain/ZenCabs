@@ -6,32 +6,39 @@ import * as THREE from 'three';
 import { SCENE } from '../config/theme';
 import { useFleetStore } from '../store/fleetStore';
 import { ServicesContext, useServices } from '../store/servicesContext';
-import { CameraRig, DynamicFog, ShadowFollower } from './CameraRig';
+import { useLowPower } from '../store/useBreakpoint';
+import { CameraRig, DoubleClickZoom, DynamicFog, ShadowFollower } from './CameraRig';
 import { City } from './City';
 import { PendingRequests, RouteOverlay, ZonesOverlay } from './Overlays';
 import { ParkingLotTwin } from './ParkingLotTwin';
 import { Vehicles } from './Vehicles';
 
-export function FleetScene() {
+export function FleetScene({ active = true }: { active?: boolean }) {
   const services = useServices();
   const select = useFleetStore((s) => s.select);
+  const low = useLowPower();
   return (
     <Canvas
-      shadows={{ type: THREE.PCFShadowMap }}
-      dpr={[1, 1.5]}
-      gl={{ antialias: false, logarithmicDepthBuffer: true, powerPreference: 'high-performance' }}
+      // Rendering pauses while another page is open (the scene stays mounted).
+      frameloop={active ? 'always' : 'never'}
+      shadows={low ? false : { type: THREE.PCFShadowMap }}
+      dpr={low ? [1, 1.25] : [1, 1.5]}
+      gl={{ antialias: low, logarithmicDepthBuffer: true, powerPreference: 'high-performance' }}
+      onCreated={({ gl }) => {
+        gl.toneMapping = THREE.NeutralToneMapping;
+      }}
       camera={{ fov: 42, near: 1, far: 160000, position: [2600, 6200, 7600] }}
       onPointerMissed={() => select(null)}
     >
       {/* Context does not cross the reconciler boundary in every setup — re-provide it. */}
       <ServicesContext.Provider value={services}>
-        <World />
+        <World low={low} />
       </ServicesContext.Provider>
     </Canvas>
   );
 }
 
-function World() {
+function World({ low }: { low: boolean }) {
   const sun = useRef<THREE.DirectionalLight>(null);
   const showZones = useFleetStore((s) => s.showZones);
   return (
@@ -56,6 +63,7 @@ function World() {
       />
       <ShadowFollower light={sun} />
       <DynamicFog />
+      <DoubleClickZoom />
       <Suspense fallback={null}>
         <City />
         <ParkingLotTwin />
@@ -65,11 +73,14 @@ function World() {
         {showZones && <ZonesOverlay />}
       </Suspense>
       <CameraRig />
-      <EffectComposer multisampling={4}>
-        <Bloom intensity={0.35} luminanceThreshold={1.15} luminanceSmoothing={0.2} mipmapBlur radius={0.5} />
-        <Vignette offset={0.35} darkness={0.18} />
-        <ToneMapping mode={ToneMappingMode.NEUTRAL} />
-      </EffectComposer>
+      {/* Post-processing is desktop-only; phones render straight to screen with neutral tone mapping. */}
+      {!low && (
+        <EffectComposer multisampling={4}>
+          <Bloom intensity={0.35} luminanceThreshold={1.15} luminanceSmoothing={0.2} mipmapBlur radius={0.5} />
+          <Vignette offset={0.35} darkness={0.18} />
+          <ToneMapping mode={ToneMappingMode.NEUTRAL} />
+        </EffectComposer>
+      )}
     </>
   );
 }

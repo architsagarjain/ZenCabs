@@ -3,7 +3,8 @@ import type { Alert, Booking, Driver, ParkingBayState, Trip, Vehicle, VehicleSta
 import type { Services } from '../services';
 import type { DispatchActivity } from '../services/dispatchService';
 
-export type ViewMode = 'COMMAND' | 'OPERATIONS';
+export type Page = 'dashboard' | 'fleet' | 'drivers' | 'insights';
+export type SheetState = 'peek' | 'half' | 'full';
 export type CameraPreset = 'REGION' | 'CITY' | 'BASE' | 'OVERVIEW';
 export type DetailTab = 'OVERVIEW' | 'DRIVER' | 'TRIPS' | 'DISPATCH';
 export type FleetFilter = VehicleStatus | 'PARKED_1H' | 'ALL' | 'AT_BASE' | 'BUSY';
@@ -31,7 +32,12 @@ interface FleetState {
   now: number;
   connection: 'connecting' | 'open' | 'closed';
   // ui state
-  view: ViewMode;
+  page: Page;
+  paletteOpen: boolean;
+  /** Mobile bottom sheet position. */
+  sheet: SheetState;
+  settingsOpen: boolean;
+  feedTab: 'alerts' | 'activity';
   selectedVehicleId: string | null;
   hoveredVehicleId: string | null;
   following: boolean;
@@ -48,8 +54,9 @@ interface FleetState {
   callDriverId: string | null;
 
   select(vehicleId: string | null, opts?: { fly?: boolean; tab?: DetailTab }): void;
+  showOnMap(vehicleId: string): void;
   hover(vehicleId: string | null): void;
-  setView(v: ViewMode): void;
+  setPage(p: Page): void;
   setFilter(f: FleetFilter): void;
   setSearch(s: string): void;
   setDetailTab(t: DetailTab): void;
@@ -73,7 +80,11 @@ export const useFleetStore = create<FleetState>((set, get) => ({
   analyticsVersion: 0,
   now: Date.now(),
   connection: 'connecting',
-  view: 'COMMAND',
+  page: 'dashboard',
+  paletteOpen: false,
+  sheet: 'peek',
+  settingsOpen: false,
+  feedTab: 'alerts',
   selectedVehicleId: null,
   hoveredVehicleId: null,
   following: true,
@@ -90,13 +101,17 @@ export const useFleetStore = create<FleetState>((set, get) => ({
   callDriverId: null,
 
   select(vehicleId, opts = {}) {
-    set({ selectedVehicleId: vehicleId, detailTab: opts.tab ?? 'OVERVIEW', following: !!vehicleId });
-    if (vehicleId && opts.fly !== false) get().camera({ kind: 'vehicle', vehicleId });
+    set({ selectedVehicleId: vehicleId, detailTab: opts.tab ?? 'OVERVIEW', following: !!vehicleId && get().page === 'dashboard' });
+    if (vehicleId && opts.fly !== false && get().page === 'dashboard') get().camera({ kind: 'vehicle', vehicleId });
+  },
+  /** Jump to the live map and focus a vehicle (used from Fleet / Drivers / Insights). */
+  showOnMap(vehicleId) {
+    set({ page: 'dashboard', selectedVehicleId: vehicleId, following: true, paletteOpen: false });
+    get().camera({ kind: 'vehicle', vehicleId });
   },
   hover: (hoveredVehicleId) => set({ hoveredVehicleId }),
-  setView(view) {
-    set({ view, showZones: view === 'OPERATIONS' ? true : get().showZones });
-    if (view === 'OPERATIONS' && !get().selectedVehicleId) get().camera({ kind: 'preset', preset: 'CITY' });
+  setPage(page) {
+    set({ page, paletteOpen: false });
   },
   setFilter: (filter) => set({ filter }),
   setSearch: (search) => set({ search }),

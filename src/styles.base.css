@@ -1,0 +1,419 @@
+/* ZenCabs Command Center — design system
+   Principles from DESIGN.md (calm, neutral surfaces, strong hierarchy, progressive disclosure),
+   identity from the ZenCabs Brand Guidelines (Poppins + Montserrat, #07C0EB / #27EBCD, logo blue #1E63C4).
+   Colours mirror src/config/theme.ts. */
+:root {
+  /* surfaces + text (DESIGN.md §10) */
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f8fafc;
+  --surface-3: #f1f5f9;
+  --text: #111827;
+  --text-2: #64748b;
+  --text-3: #94a3b8;
+  --border: #e6eaf0;
+  --border-strong: #d5dbe3;
+  /* brand */
+  --primary: #1e63c4; /* logo tagline blue: primary actions, active nav */
+  --primary-hover: #1a56ab;
+  --primary-surface: #eef4fc;
+  --sky: #07c0eb;
+  --aqua: #27ebcd;
+  --sky-ink: #0287aa;
+  --brand-gradient: linear-gradient(90deg, #27ebcd 0%, #07c0eb 100%);
+  /* semantic (fills / text-safe inks / surfaces) */
+  --success: #10b981;
+  --success-ink: #047857;
+  --success-surface: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-ink: #b45309;
+  --warning-surface: #fff7e6;
+  --danger: #ef4444;
+  --danger-ink: #b91c1c;
+  --danger-surface: #fff1f2;
+  --info: #3b82f6;
+  --info-surface: #eff6ff;
+  /* shape */
+  --r-btn: 10px;
+  --r-card: 16px;
+  --r-lg: 18px;
+  --r-modal: 20px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, 0.03), 0 6px 20px rgba(16, 24, 40, 0.04);
+  --shadow-pop: 0 4px 12px rgba(16, 24, 40, 0.08), 0 16px 40px rgba(16, 24, 40, 0.1);
+  --font-heading: 'Poppins', 'Montserrat', system-ui, sans-serif;
+  --font-body: 'Montserrat', 'Poppins', system-ui, sans-serif;
+  --pad: 32px;
+  --gap: 16px;
+  --header-h: 64px;
+  /* legacy aliases used by the 3D labels */
+  --ink: var(--text);
+  --muted: var(--text-2);
+  --tagline: var(--primary);
+  color-scheme: light;
+}
+@media (min-width: 1440px) {
+  :root {
+    --pad: 40px;
+    --gap: 20px;
+  }
+}
+@media (max-width: 1023px) {
+  :root {
+    --pad: 20px;
+  }
+}
+@media (max-width: 767px) {
+  :root {
+    --pad: 16px;
+    --gap: 12px;
+    --header-h: 56px;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+input,
+select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-btn);
+  height: 44px;
+  padding: 0 12px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+input:focus,
+select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30, 99, 196, 0.14);
+}
+.muted {
+  color: var(--text-2);
+}
+.faint {
+  color: var(--text-3);
+}
+.small {
+  font-size: 12px;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.bad {
+  color: var(--danger-ink) !important;
+}
+.good {
+  color: var(--success-ink) !important;
+}
+
+/* ───────────── buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--r-btn);
+  font-family: var(--font-heading);
+  font-weight: 500;
+  font-size: 14px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--text-3);
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-2);
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.btn.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+.btn.wide {
+  width: 100%;
+}
+.btn.on {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-surface);
+}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: var(--r-btn);
+  color: var(--text-2);
+  position: relative;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.icon-btn:hover {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.badge-count {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--surface);
+}
+
+/* segmented control */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 12px;
+  background: var(--surface-3);
+}
+.segmented button {
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.segmented button:hover {
+  color: var(--text);
+}
+.segmented button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.1);
+}
+
+/* chips (filters) */
+.chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.chip {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+}
+.chip.active {
+  background: var(--primary-surface);
+  border-color: transparent;
+  color: var(--primary);
+}
+.chip .n {
+  font-size: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+.chip.active .n {
+  color: var(--primary);
+}
+
+/* status pill (DESIGN.md §21) */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+}
+.idle-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* ───────────── cards */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow);
+}
+.card-pad {
+  padding: 20px;
+}
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.card-head h3 {
+  font-size: 16px;
+}
+.card-head p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-2);
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  vertical-align: 2px;
+}
+.count.alert {
+  background: var(--danger-surface);
+  color: var(--danger-ink);
+}
+.link-btn {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}
+.empty {
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--text-2);
+}
+.empty b {
+  display: block;
+  color: var(--text);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.empty svg {
+  color: var(--success);
+  margin-bottom: 6px;
+}

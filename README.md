@@ -20,18 +20,22 @@ Useful URL flags:
 
 | Flag | Effect |
 | --- | --- |
-| `?speed=10` | Starting simulation speed. Can also be changed in the top bar: 1×/3×/10×/20×. |
+| `?speed=10` | Starting simulation speed. Can also be changed in the header (1×/3×/10×/20×), or under ⋯ on phones. |
 | `?mode=LIVE` | Use the backend instead of the in-browser simulation. |
 
-![Operations view](docs/screenshots/operations.png)
+![Dashboard](docs/screenshots/dashboard.png)
 
-| Jammu city (real map) | Region: Nagrota, Akhnoor, R.S. Pura… | Base parking twin |
-| --- | --- | --- |
-| ![](docs/screenshots/city.png) | ![](docs/screenshots/region.png) | ![](docs/screenshots/base-parking.png) |
-
-| Vehicle follow + route | Dispatch console |
+| Vehicle drawer (following a car on its route) | New ride request |
 | --- | --- |
-| ![](docs/screenshots/vehicle-follow.png) | ![](docs/screenshots/dispatch.png) |
+| ![](docs/screenshots/vehicle-drawer.png) | ![](docs/screenshots/dispatch.png) |
+
+| Fleet & vehicles | Insights | Search (⌘K) |
+| --- | --- | --- |
+| ![](docs/screenshots/fleet.png) | ![](docs/screenshots/insights.png) | ![](docs/screenshots/search.png) |
+
+| Phone: dashboard | Phone: vehicle sheet | Phone: fleet |
+| --- | --- | --- |
+| <img src="docs/screenshots/mobile-dashboard.png" width="260"> | <img src="docs/screenshots/mobile-vehicle.png" width="260"> | <img src="docs/screenshots/mobile-fleet.png" width="260"> |
 
 ### Try LIVE mode (same UI, real HTTP + WebSocket)
 
@@ -56,19 +60,22 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 - Bay colours mark idle time: 0–30 min normal, 30–60 attention, 60–120 warning, 120+ critical (pulsing).
 
 **Vehicle interaction**
-- Clicking a car (or a row in the fleet list) flies the camera to it, highlights it, follows it and opens the detail panel.
-- The panel shows driver, status, location, bay, parked time, trips, revenue, distance, idle time, last GPS and energy.
+- Clicking a car on the map (or anywhere it is listed) opens the **vehicle drawer**. On the map it also flies the camera to the car, highlights it and follows it. Panning the map stops following.
+- The drawer opens with a one-line summary ("On a trip to Janipur · arrives in 2 min"), then shows driver, status, location, bay, parked time, trips, revenue, distance, idle time, last GPS and energy.
 - Actions: **View driver · View trips · View route · Dispatch · Call driver · Center camera**.
 
-**Fleet HUD**
-- TOTAL FLEET, ON TRIP, AVAILABLE, PARKED > 1 HR, MAINTENANCE and OFFLINE, plus en route, returning, utilisation and revenue.
-- Clicking a KPI filters both the list and the 3D view.
+**Dashboard**
+- Six KPI cards: on trip, available, open requests, parked over 1 hr, revenue today and fleet health. Each one shows context and its 30-minute trend. Clicking a card filters the map; fleet health opens the fleet list.
+- The live map takes most of the page. Next to it are the **Action center** (only items that need a person, most urgent first, each with Call / Locate / Resolve) and the **Operations feed** (alerts and dispatch activity).
+- Below the map, a trends row shows rides per hour, cumulative revenue and fleet utilisation. Every chart can be switched to a table.
+- Other pages: **Fleet & vehicles** (searchable, filterable table), **Drivers**, and **Insights**.
+- **Search (⌘K / Ctrl-K or `/`)** finds any vehicle, plate, driver, bay, area or landmark and jumps to it.
 
 **Dispatch**
-- **+ Ride request** opens the dispatch console.
+- **New ride request** opens the dispatch dialog.
 - It recommends the best vehicle with ETA and reasons. Assigning one lets you watch it go ASSIGNED → EN_ROUTE_PICKUP → WAITING → ON_TRIP → AVAILABLE / RETURNING_TO_BASE.
 
-**Operations view** (press `o`) answers:
+**Insights** answers:
 - Which vehicles are sitting idle?
 - Which drivers are working?
 - Which cars have been parked too long?
@@ -84,17 +91,31 @@ npm run dev:live       # or open http://localhost:5173/?mode=LIVE
 - Critical alerts also pop up as toasts.
 - A dispatch activity feed shows events as they happen.
 
-Keyboard: `Esc` deselect · `o` Operations · `b` base camera · `c` city camera · `r` region camera.
+**Map controls**
+- Drag pans along the ground, like a map.
+- Scroll, pinch or double-click zooms towards the point under the cursor.
+- Right-drag (or two fingers) rotates and tilts. The tilt flattens automatically as you zoom out, so the region view never skims the horizon.
+- The on-map buttons zoom in/out, face north and jump to the base. Region / City / Base switch between preset views.
+
+**Phones (under 768 px)** get only the essentials:
+- A full-screen map with a bottom nav (Dashboard / Fleet / Drivers / Insights).
+- A drag-up sheet holding the KPIs, the new-ride button, the Action center and the feed.
+- The vehicle drawer opens as a bottom sheet.
+- Every touch target is at least 44 px.
+- Shadows, post-processing and the smallest buildings are switched off to keep the frame rate up.
+
+Keyboard: `⌘K` / `/` search · `Esc` close or deselect · `+` / `−` zoom · `n` face north · `b` base · `c` city · `r` region.
 
 ## Brand
 
 The interface follows the ZenCabs Brand Guidelines:
 
-- **Colours:** primary #07C0EB and #27EBCD, and the #27EBCD → #07C0EB gradient for primary actions and highlights. White and #BDBDBD for surfaces and borders.
+- **Colours:** the brand sky #07C0EB and aqua #27EBCD (and their gradient) for map highlights and the base. The logo's tagline blue #1E63C4 is used for primary actions and active navigation, because it keeps white text readable. Surfaces are white on a neutral #F6F8FB, with hairline borders.
+- **Layout:** follows the dashboard principles in the design brief: calm neutral surfaces, sentence-case labels, 4–6 KPIs with context and trend, a dominant map, an action center, and progressive disclosure (the drawer and dialogs hold the detail). There is one icon family ([Lucide](https://lucide.dev)).
 - **Fonts:** Poppins for headings and numbers, Montserrat for body text. Both are bundled locally, so the console also works offline.
-- **Logo:** the official ZenCabs logo (`public/brand/`) appears in the top bar, the favicon, the loading screen and on the base office roof in 3D.
+- **Logo:** the official ZenCabs logo (`public/brand/`) appears in the sidebar, the favicon, the loading screen and on the base office roof in 3D.
 
-All colours are defined in one file, `src/config/theme.ts`, which feeds both the UI and the 3D scene.
+Scene colours are defined in `src/config/theme.ts`. The UI tokens (colour, radius, spacing, breakpoints) live in `src/styles.base.css`.
 
 ## Architecture
 
@@ -129,7 +150,7 @@ Configuration lives in `src/config/dataConfig.ts` and `.env` (see `.env.example`
 
 ## Tech
 
-React 19, three.js via @react-three/fiber and drei, postprocessing (bloom), zustand, Vite and TypeScript.
+React 19, three.js via @react-three/fiber and drei (camera-controls), postprocessing (bloom), zustand, lucide-react, Vite and TypeScript.
 
 There are no paid services or map tiles: the city is built from free open data at build time (see below), and the cars and parking lot are generated procedurally.
 

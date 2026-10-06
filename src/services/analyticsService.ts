@@ -12,6 +12,19 @@ import type { MapService } from './mapService';
 import type { VehicleService } from './vehicleService';
 
 const HOUR = 3_600_000;
+const MIN = 60_000;
+
+export interface KpiSample {
+  t: number;
+  onTrip: number;
+  available: number;
+  pending: number;
+  revenue: number;
+  utilization: number;
+  parkedOverOneHour: number;
+  inService: number;
+}
+export type KpiKey = Exclude<keyof KpiSample, 't'>;
 const BUSY: VehicleStatus[] = ['ASSIGNED', 'EN_ROUTE_PICKUP', 'WAITING', 'ON_TRIP'];
 
 /**
@@ -22,6 +35,8 @@ const BUSY: VehicleStatus[] = ['ASSIGNED', 'EN_ROUTE_PICKUP', 'WAITING', 'ON_TRI
 export class AnalyticsService extends ObservableService {
   private server: FleetAnalytics | null = null;
   private recommendation: { result: DispatchResult; forZone: string; at: number } | null = null;
+  /** Client-side KPI history (one sample per simulated/real minute) for deltas and sparklines. */
+  private samples: KpiSample[] = [];
 
   constructor(
     private api: ApiClient,
@@ -41,6 +56,7 @@ export class AnalyticsService extends ObservableService {
   }
 
   async refresh() {
+    this.sample();
     this.server = await this.api.get<FleetAnalytics>(API.fleetAnalytics);
     await this.refreshRecommendation();
     this.notify();
@@ -85,6 +101,78 @@ export class AnalyticsService extends ObservableService {
       utilizationPct: Math.round((busy / Math.max(1, operable)) * 100),
       pendingRequests: this.bookings.pendingBookings().length,
     };
+  }
+
+  private sample() {
+    const now = this.clock.now();
+    const last = this.samples[this.samples.length - 1];
+    if (last && now - last.t < MIN) return;
+    const st = this.fleetStatus();
+    const tot = this.totals();
+    this.samples.push({
+      t: now,
+      onTrip: st.onTrip,
+      available: st.available,
+      pending: tot.pendingRequests,
+      revenue: tot.revenueToday,
+      utilization: tot.utilizationPct,
+      parkedOverOneHour: st.parkedOverOneHour,
+      inService: st.totalFleet - st.maintenance - st.offline,
+    });
+    if (this.samples.length > 600) this.samples.shift();
+  }
+
+  history(): KpiSample[] {
+    return this.samples;
+  }
+
+  /** Change in a KPI vs ~`windowMs` ago (or the oldest sample if history is shorter). */
+  delta(key: KpiKey, current: number, windowMs = 30 * MIN): { delta: number; sinceMs: number } | null {
+    const now = this.clock.now();
+    const past = this.samples.find((x) => x.t >= now - windowMs) ?? this.samples[0];
+    if (!past || now - past.t < 4 * MIN) return null;
+    return { delta: current - past[key], sinceMs: now - past.t };
+  }
+
+  /** Last `n` samples of a KPI for a sparkline. */
+  spark(key: KpiKey, n = 12): number[] {
+    return this.samples.slice(-n).map((x) => x[key]);
+  }
+
+  /** Completed rides per hour today (from trip records). */
+  ridesByHour(): { hour: number; rides: number }[] {
+    const now = new Date(this.clock.now());
+    const start = new Date(now);
+    start.setHours(6, 0, 0, 0);
+    const buckets = new Map<number, number>();
+    for (let h = 6; h <= now.getHours(); h++) buckets.set(h, 0);
+    for (const t of this.bookings.getTrips()) {
+      if (t.status !== 'COMPLETED' || !t.completedAt || t.completedAt < start.getTime()) continue;
+      const h = new Date(t.completedAt).getHours();
+      if (buckets.has(h)) buckets.set(h, buckets.get(h)! + 1);
+    }
+    return [...buckets].map(([hour, rides]) => ({ hour, rides }));
+  }
+
+  /** Cumulative revenue today, in 30-minute steps (from completed trip fares). */
+  revenueCurve(): { t: number; value: number }[] {
+    const now = this.clock.now();
+    const start = new Date(now);
+    start.setHours(6, 0, 0, 0);
+    const trips = this.bookings
+      .getTrips()
+      .filter((t) => t.status === 'COMPLETED' && t.completedAt && t.completedAt >= start.getTime())
+      .sort((a, b) => a.completedAt! - b.completedAt!);
+    const out: { t: number; value: number }[] = [];
+    let i = 0;
+    let sum = 0;
+    for (let t = start.getTime(); t <= now; t += 30 * MIN) {
+      while (i < trips.length && trips[i].completedAt! <= t) sum += trips[i++].fare;
+      out.push({ t, value: sum });
+    }
+    while (i < trips.length) sum += trips[i++].fare;
+    out.push({ t: now, value: sum });
+    return out;
   }
 
   zoneDemand() {

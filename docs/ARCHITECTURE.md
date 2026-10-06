@@ -28,7 +28,7 @@ The rule that makes this possible: **the UI and 3D scene never touch mock data**
           store/fleetStore (zustand, 4 Hz snapshots)          high-frequency reads in useFrame
                          │                                    (gpsService.sample, parkingService.bayPose)
                          ▼                                                    │
-               ui/ (HUD, panels, Operations)  ◀──────────────────▶  scene/ (three.js, R3F)
+               ui/ (pages, drawer, dialogs)   ◀──────────────────▶  scene/ (three.js, R3F)
 ```
 
 `src/services/index.ts` (`createServices`) is the **only** file that branches on `DATA_MODE`.
@@ -46,7 +46,7 @@ The rule that makes this possible: **the UI and 3D scene never touch mock data**
 | `src/services/` | Business-facing services consumed by the UI. |
 | `src/store/` | UI state and throttled service snapshots. |
 | `src/scene/` | 3D city, parking-lot digital twin, vehicles, overlays and camera. |
-| `src/ui/` | DOM overlay: top HUD, fleet list, vehicle panel, Operations view, dispatch console. |
+| `src/ui/` | DOM UI: app shell (sidebar, header, bottom nav), dashboard (KPIs, map card, action center, feed, trends), fleet/drivers/insights pages, vehicle drawer, command palette and dialogs. Responsive at 768 / 1024 / 1440 px. |
 | `src/mock/` | Simulation engine, seed data, real-map loader (`world/jammuMap.ts`), parking layout and mock REST router. **UI never imports this.** |
 | `scripts/` | Fetch + build the real Jammu map from Overture Maps (OpenStreetMap roads, building footprints). |
 | `public/maps/` | Built map files: road graph JSON and building footprints binary. |
